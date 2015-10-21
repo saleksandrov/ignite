@@ -24,6 +24,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.internal.IgniteInternalFuture;
@@ -153,9 +154,7 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
     /**
      * @throws Exception If any error occurs.
      */
-    public void testMultiThreadedClientsServersRestart() throws Exception {
-        fail("https://issues.apache.org/jira/browse/IGNITE-1123");
-
+    public void testMultiThreadedClientsServersRestart() throws Throwable {
         clientFlagGlobal = false;
 
         info("Test timeout: " + (getTestTimeout() / (60 * 1000)) + " min.");
@@ -170,16 +169,26 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
 
         final AtomicInteger clientIdx = new AtomicInteger(GRID_CNT);
 
+        final AtomicReference<Throwable> error = new AtomicReference<>();
+
         IgniteInternalFuture<?> fut1 = multithreadedAsync(
             new Callable<Object>() {
                 @Override public Object call() throws Exception {
-                    clientFlagPerThread.set(true);
+                    try {
+                        clientFlagPerThread.set(true);
 
-                    int idx = clientIdx.getAndIncrement();
+                        int idx = clientIdx.getAndIncrement();
 
-                    while (!done.get()) {
-                        stopGrid(idx);
-                        startGrid(idx);
+                        while (!done.get() && error.get() == null) {
+                            stopGrid(idx);
+                            startGrid(idx);
+                        }
+
+                    }
+                    catch (Throwable e) {
+                        error.compareAndSet(null, e);
+
+                        return null;
                     }
 
                     return null;
@@ -196,15 +205,22 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
         IgniteInternalFuture<?> fut2 = multithreadedAsync(
             new Callable<Object>() {
                 @Override public Object call() throws Exception {
-                    clientFlagPerThread.set(false);
+                    try {
+                        clientFlagPerThread.set(false);
 
-                    while (!done.get()) {
-                        int idx = srvIdx.take();
+                        while (!done.get() && error.get() == null) {
+                            int idx = srvIdx.take();
 
-                        stopGrid(idx);
-                        startGrid(idx);
+                            stopGrid(idx);
+                            startGrid(idx);
 
-                        srvIdx.add(idx);
+                            srvIdx.add(idx);
+                        }
+                    }
+                    catch (Throwable e) {
+                        error.compareAndSet(null, e);
+
+                        return null;
                     }
 
                     return null;
@@ -213,7 +229,28 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
             GRID_CNT - 1
         );
 
-        Thread.sleep(getTestTimeout() - 60 * 1000);
+        long timeToExec = getTestTimeout() - 60 * 1000;
+
+        while (timeToExec > 0) {
+            long start = System.currentTimeMillis();
+
+            Thread.sleep(3000);
+
+            timeToExec -= (System.currentTimeMillis() - start);
+
+            if (error.get() != null) {
+                Throwable err = error.get();
+
+                U.error(log, "Test failed: " + err.getMessage());
+
+                done.set(true);
+
+                fut1.cancel();
+                fut2.cancel();
+
+                throw err;
+            }
+        }
 
         done.set(true);
 
