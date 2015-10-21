@@ -1264,6 +1264,8 @@ class ClientImpl extends TcpDiscoveryImpl {
             catch (IOException | IgniteCheckedException e) {
                 err = e;
 
+                success = false;
+
                 U.error(log, "Failed to reconnect", e);
             }
             finally {
