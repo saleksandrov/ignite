@@ -19,6 +19,7 @@ package org.apache.ignite.internal;
 
 import java.util.HashMap;
 import java.util.Random;
+import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -27,10 +28,8 @@ import javax.cache.CacheException;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
 import org.apache.ignite.IgniteClientDisconnectedException;
+import org.apache.ignite.IgniteException;
 import org.apache.ignite.IgniteTransactions;
-import org.apache.ignite.cache.CacheAtomicityMode;
-import org.apache.ignite.cache.CacheMemoryMode;
-import org.apache.ignite.cache.CacheMode;
 import org.apache.ignite.cluster.ClusterTopologyException;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
@@ -40,13 +39,17 @@ import org.apache.ignite.spi.discovery.tcp.ipfinder.TcpDiscoveryIpFinder;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
 import org.apache.ignite.testframework.junits.common.GridCommonAbstractTest;
 import org.apache.ignite.transactions.Transaction;
-import org.apache.ignite.transactions.TransactionConcurrency;
-import org.apache.ignite.transactions.TransactionIsolation;
+
+import static org.apache.ignite.cache.CacheAtomicityMode.TRANSACTIONAL;
+import static org.apache.ignite.cache.CacheMemoryMode.OFFHEAP_TIERED;
+import static org.apache.ignite.cache.CacheMode.PARTITIONED;
+import static org.apache.ignite.transactions.TransactionConcurrency.PESSIMISTIC;
+import static org.apache.ignite.transactions.TransactionIsolation.REPEATABLE_READ;
 
 /**
  * Client reconnect test in multi threaded mode while cache operations are in progress.
  */
-public class IgniteClientReconnectCacheMultiThreadedTest extends GridCommonAbstractTest {
+public class IgniteClientReconnectMassiveShutdownTest extends GridCommonAbstractTest {
     /** */
     private static final int GRID_CNT = 14;
 
@@ -62,17 +65,15 @@ public class IgniteClientReconnectCacheMultiThreadedTest extends GridCommonAbstr
     /**
      * @throws Exception If fails.
      */
-    public IgniteClientReconnectCacheMultiThreadedTest() throws Exception {
+    public IgniteClientReconnectMassiveShutdownTest() throws Exception {
         super(false);
     }
 
     /** {@inheritDoc} */
-    @SuppressWarnings({"IfMayBeConditional"})
     @Override protected IgniteConfiguration getConfiguration(String gridName) throws Exception {
         IgniteConfiguration cfg = super.getConfiguration(gridName);
 
-        if (clientMode)
-            cfg.setClientMode(true);
+        cfg.setClientMode(clientMode);
 
         cfg.setDiscoverySpi(new TcpDiscoverySpi().setIpFinder(ipFinder));
 
@@ -94,10 +95,30 @@ public class IgniteClientReconnectCacheMultiThreadedTest extends GridCommonAbstr
     /**
      * @throws Exception If any error occurs.
      */
-    public void testMassiveServersShutdown() throws Exception {
-        clientMode = false;
+    public void _testMassiveServersShutdown1() throws Exception {
+        massiveServersShutdown(StopType.FAIL_EVENT);
+    }
 
-        final int serversToKill = GRID_CNT / 2;
+    /**
+     * @throws Exception If any error occurs.
+     */
+    public void testMassiveServersShutdown2() throws Exception {
+        massiveServersShutdown(StopType.SIMULATE_FAIL);
+    }
+
+    /**
+     * @throws Exception If any error occurs.
+     */
+    public void testMassiveServersShutdown3() throws Exception {
+        massiveServersShutdown(StopType.CLOSE);
+    }
+
+    /**
+     * @param stopType How tp stop node.
+     * @throws Exception If any error occurs.
+     */
+    private void massiveServersShutdown(final StopType stopType) throws Exception {
+        clientMode = false;
 
         startGridsMultiThreaded(GRID_CNT);
 
@@ -112,19 +133,19 @@ public class IgniteClientReconnectCacheMultiThreadedTest extends GridCommonAbstr
 
         assertTrue(client.configuration().isClientMode());
 
-        CacheConfiguration cfg = new CacheConfiguration();
+        CacheConfiguration<String, Integer> cfg = new CacheConfiguration<>();
 
-        cfg.setCacheMode(CacheMode.PARTITIONED);
-        cfg.setAtomicityMode(CacheAtomicityMode.TRANSACTIONAL);
+        cfg.setCacheMode(PARTITIONED);
+        cfg.setAtomicityMode(TRANSACTIONAL);
         cfg.setBackups(2);
         cfg.setOffHeapMaxMemory(0);
-        cfg.setMemoryMode(CacheMemoryMode.OFFHEAP_TIERED);
+        cfg.setMemoryMode(OFFHEAP_TIERED);
 
-        IgniteCache cache = client.getOrCreateCache(cfg);
+        IgniteCache<String, Integer> cache = client.getOrCreateCache(cfg);
 
         HashMap<String, Integer> put = new HashMap<>();
 
-        // Preloading the cache with some data.
+        // Load some data.
         for (int i = 0; i < 10_000; i++)
             put.put(String.valueOf(i), i);
 
@@ -143,6 +164,8 @@ public class IgniteClientReconnectCacheMultiThreadedTest extends GridCommonAbstr
 
                     Ignite ignite = grid(idx);
 
+                    Thread.currentThread().setName("client-thread-" + ignite.name());
+
                     assertTrue(ignite.configuration().isClientMode());
 
                     IgniteCache<String, Integer> cache = ignite.cache(null);
@@ -152,10 +175,7 @@ public class IgniteClientReconnectCacheMultiThreadedTest extends GridCommonAbstr
                     Random rand = new Random();
 
                     while (!done.get()) {
-                        Transaction tx = txs.txStart(TransactionConcurrency.PESSIMISTIC,
-                            TransactionIsolation.READ_COMMITTED);
-
-                        try {
+                        try (Transaction tx = txs.txStart(PESSIMISTIC, REPEATABLE_READ)) {
                             cache.put(String.valueOf(rand.nextInt(10_000)), rand.nextInt(50_000));
 
                             tx.commit();
@@ -163,70 +183,124 @@ public class IgniteClientReconnectCacheMultiThreadedTest extends GridCommonAbstr
                         catch (ClusterTopologyException ex) {
                             ex.retryReadyFuture().get();
                         }
-                        catch (CacheException e) {
+                        catch (IgniteException | CacheException e) {
                             if (X.hasCause(e, IgniteClientDisconnectedException.class)) {
                                 IgniteClientDisconnectedException cause = X.cause(e,
                                     IgniteClientDisconnectedException.class);
 
-                                cause.reconnectFuture().get(); // Wait for reconnect.
+                                assert cause != null;
+
+                                cause.reconnectFuture().get();
                             }
                             else if (X.hasCause(e, ClusterTopologyException.class)) {
                                 ClusterTopologyException cause = X.cause(e, ClusterTopologyException.class);
+
+                                assert cause != null;
 
                                 cause.retryReadyFuture().get();
                             }
                             else
                                 throw e;
                         }
-                        finally {
-                            tx.close();
-                        }
                     }
 
                     return null;
                 }
             },
-            CLIENT_GRID_CNT
-        );
+            CLIENT_GRID_CNT);
 
-        // Killing a half of server nodes.
-        final BlockingQueue<Integer> victims = new LinkedBlockingQueue<>();
+        try {
+            // Killing a half of server nodes.
+            final int srvsToKill = GRID_CNT / 2;
 
-        for (int i = 0; i < serversToKill; i++)
-            victims.add(i);
+            final BlockingQueue<Integer> victims = new LinkedBlockingQueue<>();
 
-        final BlockingQueue<Integer> assassins = new LinkedBlockingQueue<>();
+            for (int i = 0; i < srvsToKill; i++)
+                victims.add(i);
 
-        for (int i = serversToKill; i < GRID_CNT; i++)
-            assassins.add(i);
+            final BlockingQueue<Integer> assassins = new LinkedBlockingQueue<>();
 
-        IgniteInternalFuture<?> serversShutdownFut = multithreadedAsync(
-            new Callable<Object>() {
-                @Override public Object call() throws Exception {
-                    Thread.sleep(5_000);
+            for (int i = srvsToKill; i < GRID_CNT; i++)
+                assassins.add(i);
 
-                    Ignite assassin = grid(assassins.take());
+            IgniteInternalFuture<?> srvsShutdownFut = multithreadedAsync(
+                new Callable<Object>() {
+                    @Override public Object call() throws Exception {
+                        Thread.sleep(5_000);
 
-                    assertFalse(assassin.configuration().isClientMode());
+                        Ignite assassin = grid(assassins.take());
 
-                    Ignite victim = grid(victims.take());
+                        assertFalse(assassin.configuration().isClientMode());
 
-                    assertFalse(victim.configuration().isClientMode());
+                        Ignite victim = grid(victims.take());
 
-                    assassin.configuration().getDiscoverySpi().failNode(victim.cluster().localNode().id(), null);
+                        assertFalse(victim.configuration().isClientMode());
 
-                    return null;
-                }
-            },
-            assassins.size()
-        );
+                        log.info("Kill node [node=" + victim.name() + ", from=" + assassin.name() + ']');
 
-        serversShutdownFut.get();
+                        switch (stopType) {
+                            case CLOSE:
+                                victim.close();
 
-        Thread.sleep(15_000);
+                                break;
 
-        done.set(true);
+                            case FAIL_EVENT:
+                                UUID nodeId = victim.cluster().localNode().id();
 
-        clientsFut.get();
+                                assassin.configuration().getDiscoverySpi().failNode(nodeId, null);
+
+                                break;
+
+                            case SIMULATE_FAIL:
+                                ((TcpDiscoverySpi)victim.configuration().getDiscoverySpi()).simulateNodeFailure();
+
+                                break;
+
+                            default:
+                                fail();
+                        }
+
+                        return null;
+                    }
+                },
+                assassins.size()
+            );
+
+            srvsShutdownFut.get();
+
+            Thread.sleep(15_000);
+
+            done.set(true);
+
+            clientsFut.get();
+
+            awaitPartitionMapExchange();
+
+            for (int k = 0; k < 10_000; k++) {
+                String key = String.valueOf(k);
+
+                Object val = cache.get(key);
+
+                for (int i = srvsToKill; i < GRID_CNT; i++)
+                    assertEquals(val, ignite(i).cache(null).get(key));
+            }
+        }
+        finally {
+            done.set(true);
+        }
+    }
+
+    /**
+     *
+     */
+    enum StopType {
+        /** */
+        CLOSE,
+
+        /** */
+        SIMULATE_FAIL,
+
+        /** */
+        FAIL_EVENT
     }
 }

@@ -3100,10 +3100,12 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
                 assert !left.isEmpty();
 
                 for (ClientKey id : left) {
-                    GridNioRecoveryDescriptor recoverySnd = recoveryDescs.remove(id);
+                    GridNioRecoveryDescriptor recoverySnd = recoveryDescs.get(id);
 
-                    if (recoverySnd != null)
-                        recoverySnd.onNodeLeft();
+                    if (recoverySnd != null) {
+                        if (recoverySnd.onNodeLeft())
+                            recoveryDescs.remove(id);
+                    }
                 }
             }
         }

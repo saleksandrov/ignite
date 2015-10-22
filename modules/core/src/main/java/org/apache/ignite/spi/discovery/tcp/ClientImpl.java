@@ -461,7 +461,8 @@ class ClientImpl extends TcpDiscoveryImpl {
      * @see TcpDiscoverySpi#joinTimeout
      */
     @SuppressWarnings("BusyWait")
-    @Nullable private T2<Socket, Boolean> joinTopology(boolean recon, long timeout) throws IgniteSpiException, InterruptedException {
+    @Nullable private T2<SocketStream, Boolean> joinTopology(boolean recon, long timeout)
+        throws IgniteSpiException, InterruptedException {
         Collection<InetSocketAddress> addrs = null;
 
         long startTime = U.currentTimeMillis();
@@ -501,7 +502,7 @@ class ClientImpl extends TcpDiscoveryImpl {
 
                 InetSocketAddress addr = it.next();
 
-                T3<Socket, Integer, Boolean> sockAndRes = sendJoinRequest(recon, addr);
+                T3<SocketStream, Integer, Boolean> sockAndRes = sendJoinRequest(recon, addr);
 
                 if (sockAndRes == null) {
                     it.remove();
@@ -511,11 +512,11 @@ class ClientImpl extends TcpDiscoveryImpl {
 
                 assert sockAndRes.get1() != null && sockAndRes.get2() != null : sockAndRes;
 
-                Socket sock = sockAndRes.get1();
+                Socket sock = sockAndRes.get1().socket();
 
                 switch (sockAndRes.get2()) {
                     case RES_OK:
-                        return new T2<>(sock, sockAndRes.get3());
+                        return new T2<>(sockAndRes.get1(), sockAndRes.get3());
 
                     case RES_CONTINUE_JOIN:
                     case RES_WAIT:
@@ -548,7 +549,7 @@ class ClientImpl extends TcpDiscoveryImpl {
      * @param addr Address.
      * @return Socket, connect response and client acknowledge support flag.
      */
-    @Nullable private T3<Socket, Integer, Boolean> sendJoinRequest(boolean recon, InetSocketAddress addr) {
+    @Nullable private T3<SocketStream, Integer, Boolean> sendJoinRequest(boolean recon, InetSocketAddress addr) {
         assert addr != null;
 
         if (log.isDebugEnabled())
@@ -621,7 +622,8 @@ class ClientImpl extends TcpDiscoveryImpl {
                     log.debug("Message has been sent to address [msg=" + msg + ", addr=" + addr +
                         ", rmtNodeId=" + rmtNodeId + ']');
 
-                return new T3<>(sock, spi.readReceipt(sock, timeoutHelper.nextTimeoutChunk(ackTimeout0)),
+                return new T3<>(new SocketStream(sock),
+                    spi.readReceipt(sock, timeoutHelper.nextTimeoutChunk(ackTimeout0)),
                     res.clientAck());
             }
             catch (IOException | IgniteCheckedException e) {
@@ -765,7 +767,10 @@ class ClientImpl extends TcpDiscoveryImpl {
 
     /** {@inheritDoc} */
     @Override public void brakeConnection() {
-        U.closeQuiet(msgWorker.currSock);
+        SocketStream sockStream = msgWorker.currSock;
+
+        if (sockStream != null)
+            U.closeQuiet(sockStream.socket());
     }
 
     /** {@inheritDoc} */
@@ -826,7 +831,7 @@ class ClientImpl extends TcpDiscoveryImpl {
         private final Object mux = new Object();
 
         /** */
-        private Socket sock;
+        private SocketStream sockStream;
 
         /** */
         private UUID rmtNodeId;
@@ -838,12 +843,12 @@ class ClientImpl extends TcpDiscoveryImpl {
         }
 
         /**
-         * @param sock Socket.
+         * @param sockStream Socket.
          * @param rmtNodeId Rmt node id.
          */
-        public void setSocket(Socket sock, UUID rmtNodeId) {
+        public void setSocket(SocketStream sockStream, UUID rmtNodeId) {
             synchronized (mux) {
-                this.sock = sock;
+                this.sockStream = sockStream;
 
                 this.rmtNodeId = rmtNodeId;
 
@@ -854,22 +859,24 @@ class ClientImpl extends TcpDiscoveryImpl {
         /** {@inheritDoc} */
         @Override protected void body() throws InterruptedException {
             while (!isInterrupted()) {
-                Socket sock;
+                SocketStream sockStream;
                 UUID rmtNodeId;
 
                 synchronized (mux) {
-                    if (this.sock == null) {
+                    if (this.sockStream == null) {
                         mux.wait();
 
                         continue;
                     }
 
-                    sock = this.sock;
+                    sockStream = this.sockStream;
                     rmtNodeId = this.rmtNodeId;
                 }
 
+                Socket sock = sockStream.socket();
+
                 try {
-                    InputStream in = new BufferedInputStream(sock.getInputStream());
+                    InputStream in = sockStream.stream();
 
                     sock.setKeepAlive(true);
                     sock.setTcpNoDelay(true);
@@ -923,7 +930,7 @@ class ClientImpl extends TcpDiscoveryImpl {
                     }
                 }
                 catch (IOException e) {
-                    msgWorker.addMessage(new SocketClosedMessage(sock));
+                    msgWorker.addMessage(new SocketClosedMessage(sockStream));
 
                     if (log.isDebugEnabled())
                         U.error(log, "Connection failed [sock=" + sock + ", locNodeId=" + getLocalNodeId() + ']', e);
@@ -932,8 +939,8 @@ class ClientImpl extends TcpDiscoveryImpl {
                     U.closeQuiet(sock);
 
                     synchronized (mux) {
-                        if (this.sock == sock) {
-                            this.sock = null;
+                        if (this.sockStream == sockStream) {
+                            this.sockStream = null;
                             this.rmtNodeId = null;
                         }
                     }
@@ -1125,7 +1132,7 @@ class ClientImpl extends TcpDiscoveryImpl {
      */
     private class Reconnector extends IgniteSpiThread {
         /** */
-        private volatile Socket sock;
+        private volatile SocketStream sockStream;
 
         /** */
         private boolean clientAck;
@@ -1148,7 +1155,10 @@ class ClientImpl extends TcpDiscoveryImpl {
         public void cancel() {
             interrupt();
 
-            U.closeQuiet(sock);
+            SocketStream sockStream = this.sockStream;
+
+            if (sockStream != null)
+                U.closeQuiet(sockStream.socket());
         }
 
         /** {@inheritDoc} */
@@ -1166,23 +1176,25 @@ class ClientImpl extends TcpDiscoveryImpl {
 
             try {
                 while (true) {
-                    T2<Socket, Boolean> joinRes = joinTopology(true, timeout);
+                    T2<SocketStream, Boolean> joinRes = joinTopology(true, timeout);
 
                     if (joinRes == null) {
                         if (join) {
                             joinError(new IgniteSpiException("Join process timed out, connection failed and " +
                                 "failed to reconnect (consider increasing 'joinTimeout' configuration property) " +
-                                "[joinTimeout=" + spi.joinTimeout + ", sock=" + sock + ']'));
+                                "[joinTimeout=" + spi.joinTimeout + ']'));
                         }
                         else
                             U.error(log, "Failed to reconnect to cluster (consider increasing 'networkTimeout'" +
-                                " configuration  property) [networkTimeout=" + spi.netTimeout + ", sock=" + sock + ']');
+                                " configuration  property) [networkTimeout=" + spi.netTimeout + ']');
 
                         return;
                     }
 
-                    sock = joinRes.get1();
+                    sockStream = joinRes.get1();
                     clientAck = joinRes.get2();
+
+                    Socket sock = sockStream.socket();
 
                     if (isInterrupted())
                         throw new InterruptedException();
@@ -1194,7 +1206,7 @@ class ClientImpl extends TcpDiscoveryImpl {
 
                         sock.setSoTimeout((int)spi.netTimeout);
 
-                        InputStream in = new BufferedInputStream(sock.getInputStream());
+                        InputStream in = sockStream.stream();
 
                         sock.setKeepAlive(true);
                         sock.setTcpNoDelay(true);
@@ -1270,7 +1282,10 @@ class ClientImpl extends TcpDiscoveryImpl {
             }
             finally {
                 if (!success) {
-                    U.closeQuiet(sock);
+                    SocketStream sockStream = this.sockStream;
+
+                    if (sockStream != null)
+                        U.closeQuiet(sockStream.socket());
 
                     if (join)
                         joinError(new IgniteSpiException("Failed to connect to cluster, connection failed and failed " +
@@ -1290,7 +1305,7 @@ class ClientImpl extends TcpDiscoveryImpl {
         private final BlockingDeque<Object> queue = new LinkedBlockingDeque<>();
 
         /** */
-        private Socket currSock;
+        private SocketStream currSock;
 
         /** Indicates that pending messages are currently processed. */
         private boolean pending;
@@ -1469,7 +1484,10 @@ class ClientImpl extends TcpDiscoveryImpl {
                 }
             }
             finally {
-                U.closeQuiet(currSock);
+                SocketStream currSock = this.currSock;
+
+                if (currSock != null)
+                    U.closeQuiet(currSock.socket());
 
                 if (joinLatch.getCount() > 0)
                     joinError(new IgniteSpiException("Some error in join process.")); // This should not occur.
@@ -1492,7 +1510,7 @@ class ClientImpl extends TcpDiscoveryImpl {
 
             joinCnt++;
 
-            T2<Socket, Boolean> joinRes = joinTopology(false, spi.joinTimeout);
+            T2<SocketStream, Boolean> joinRes = joinTopology(false, spi.joinTimeout);
 
             if (joinRes == null) {
                 if (join)
@@ -1508,7 +1526,7 @@ class ClientImpl extends TcpDiscoveryImpl {
 
             currSock = joinRes.get1();
 
-            sockWriter.setSocket(joinRes.get1(), joinRes.get2());
+            sockWriter.setSocket(joinRes.get1().socket(), joinRes.get2());
 
             if (spi.joinTimeout > 0) {
                 final int joinCnt0 = joinCnt;
@@ -1877,9 +1895,9 @@ class ClientImpl extends TcpDiscoveryImpl {
                 if (reconnector != null) {
                     assert msg.success() : msg;
 
-                    currSock = reconnector.sock;
+                    currSock = reconnector.sockStream;
 
-                    sockWriter.setSocket(currSock, reconnector.clientAck);
+                    sockWriter.setSocket(currSock.socket(), reconnector.clientAck);
                     sockReader.setSocket(currSock, locNode.clientRouterNodeId());
 
                     reconnector = null;
@@ -2050,13 +2068,51 @@ class ClientImpl extends TcpDiscoveryImpl {
      */
     private static class SocketClosedMessage {
         /** */
-        private final Socket sock;
+        private final SocketStream sock;
 
         /**
          * @param sock Socket.
          */
-        private SocketClosedMessage(Socket sock) {
+        private SocketClosedMessage(SocketStream sock) {
             this.sock = sock;
+        }
+    }
+
+    /**
+     *
+     */
+    private static class SocketStream {
+        /** */
+        private final Socket sock;
+
+        /** */
+        private final InputStream in;
+
+        /**
+         * @param sock Socket.
+         * @throws IOException If failed to create stream.
+         */
+        public SocketStream(Socket sock) throws IOException {
+            assert sock != null;
+
+            this.sock = sock;
+
+            this.in = new BufferedInputStream(sock.getInputStream());
+        }
+
+        /**
+         * @return Socket.
+         */
+        Socket socket() {
+            return sock;
+
+        }
+
+        /**
+         * @return Socket input stream.
+         */
+        InputStream stream() {
+            return in;
         }
     }
 
