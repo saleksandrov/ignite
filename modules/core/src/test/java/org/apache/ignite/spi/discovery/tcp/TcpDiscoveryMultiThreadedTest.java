@@ -183,9 +183,10 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
                             stopGrid(idx);
                             startGrid(idx);
                         }
-
                     }
                     catch (Throwable e) {
+                        log.error("Unexpected error: " + e, e);
+
                         error.compareAndSet(null, e);
 
                         return null;
@@ -218,6 +219,8 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
                         }
                     }
                     catch (Throwable e) {
+                        log.error("Unexpected error: " + e, e);
+
                         error.compareAndSet(null, e);
 
                         return null;

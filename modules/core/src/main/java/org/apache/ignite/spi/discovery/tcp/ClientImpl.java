@@ -98,6 +98,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jsr166.ConcurrentHashMap8;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static org.apache.ignite.IgniteSystemProperties.IGNITE_DISCOVERY_HISTORY_SIZE;
 import static org.apache.ignite.events.EventType.EVT_CLIENT_NODE_DISCONNECTED;
 import static org.apache.ignite.events.EventType.EVT_CLIENT_NODE_RECONNECTED;
 import static org.apache.ignite.events.EventType.EVT_NODE_FAILED;
@@ -270,8 +271,6 @@ class ClientImpl extends TcpDiscoveryImpl {
 
     /** {@inheritDoc} */
     @Override public void spiStop() throws IgniteSpiException {
-        timer.cancel();
-
         if (msgWorker != null && msgWorker.isAlive()) { // Should always be alive
             msgWorker.addMessage(SPI_STOP);
 
@@ -296,6 +295,8 @@ class ClientImpl extends TcpDiscoveryImpl {
         U.join(msgWorker, log);
         U.join(sockWriter, log);
         U.join(sockReader, log);
+
+        timer.cancel();
 
         spi.printStopInfo();
     }
@@ -1236,8 +1237,13 @@ class ClientImpl extends TcpDiscoveryImpl {
 
                                         return;
                                     }
-                                    else
+                                    else {
+                                        U.warn(log, "Client failed to reconnect because failed to restore discovery " +
+                                            "messages history, consider increasing '" +
+                                            IGNITE_DISCOVERY_HISTORY_SIZE + "' system property.");
+
                                         return;
+                                    }
                                 }
                             }
                             else if (spi.ensured(msg)) {

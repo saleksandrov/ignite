@@ -2295,9 +2295,14 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
                         return null;
                     }
 
-                    if (getSpiContext().node(node.id()) == null)
+                    if (getSpiContext().node(node.id()) == null) {
+                        recoveryDesc.release();
+
+                        U.closeQuiet(ch);
+
                         throw new ClusterTopologyCheckedException("Failed to send message, " +
                             "node left cluster: " + node);
+                    }
 
                     long rcvCnt = -1;
 
