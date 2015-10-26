@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.ignite.Ignite;
+import org.apache.ignite.IgniteClientDisconnectedException;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.internal.IgniteInternalFuture;
 import org.apache.ignite.internal.IgniteKernal;
@@ -181,7 +182,13 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
 
                         while (!done.get() && error.get() == null) {
                             stopGrid(idx);
-                            startGrid(idx);
+
+                            try {
+                                startGrid(idx);
+                            }
+                            catch (IgniteClientDisconnectedException e) {
+                                log.info("Client disconnected: " + e);
+                            }
                         }
                     }
                     catch (Throwable e) {
