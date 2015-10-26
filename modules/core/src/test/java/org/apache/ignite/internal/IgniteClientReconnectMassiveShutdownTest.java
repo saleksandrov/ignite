@@ -81,6 +81,8 @@ public class IgniteClientReconnectMassiveShutdownTest extends GridCommonAbstract
         stopAllGrids();
 
         super.afterTest();
+
+        Thread.sleep(5000);
     }
 
     /** {@inheritDoc} */
