@@ -1824,7 +1824,7 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                 if (log.isDebugEnabled()) {
                     if (cp == null)
-                        log.debug("Failed to find messages history [node=" + node + ", lastMsgId" + lastMsgId + ']');
+                        log.debug("Failed to find messages history [node=" + node + ", lastMsgId=" + lastMsgId + ']');
                     else
                         log.debug("Found messages history [node=" + node + ", hist=" + cp + ']');
                 }
