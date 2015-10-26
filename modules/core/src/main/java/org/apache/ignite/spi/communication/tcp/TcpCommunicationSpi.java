@@ -1358,7 +1358,9 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
 
     /** {@inheritDoc} */
     @Override public int getOutboundMessagesQueueSize() {
-        return nioSrvr.outboundMessagesQueueSize();
+        GridNioServer<Message> srv = nioSrvr;
+
+        return srv != null ? srv.outboundMessagesQueueSize() : 0;
     }
 
     /** {@inheritDoc} */
