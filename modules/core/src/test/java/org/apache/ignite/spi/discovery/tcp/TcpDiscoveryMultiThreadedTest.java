@@ -26,11 +26,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.ignite.Ignite;
-import org.apache.ignite.IgniteClientDisconnectedException;
 import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.internal.IgniteClientDisconnectedCheckedException;
 import org.apache.ignite.internal.IgniteInternalFuture;
 import org.apache.ignite.internal.IgniteKernal;
 import org.apache.ignite.internal.util.typedef.G;
+import org.apache.ignite.internal.util.typedef.X;
 import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.TcpDiscoveryIpFinder;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
@@ -186,8 +187,11 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
                             try {
                                 startGrid(idx);
                             }
-                            catch (IgniteClientDisconnectedException e) {
-                                log.info("Client disconnected: " + e);
+                            catch (Exception e) {
+                                if (X.hasCause(e, IgniteClientDisconnectedCheckedException.class))
+                                    log.info("Client disconnected: " + e);
+                                else
+                                    throw e;
                             }
                         }
                     }
