@@ -920,12 +920,8 @@ class ClientImpl extends TcpDiscoveryImpl {
 
                         boolean ack = msg instanceof TcpDiscoveryClientAckResponse;
 
-                        if (!ack) {
-                            if (spi.ensured(msg) && joinLatch.getCount() == 0L)
-                                lastMsgId = msg.id();
-
+                        if (!ack)
                             msgWorker.addMessage(msg);
-                        }
                         else
                             sockWriter.ackReceived((TcpDiscoveryClientAckResponse)msg);
                     }
@@ -1237,13 +1233,8 @@ class ClientImpl extends TcpDiscoveryImpl {
 
                                         return;
                                     }
-                                    else {
-                                        U.warn(log, "Client failed to reconnect because failed to restore discovery " +
-                                            "messages history, consider increasing '" +
-                                            IGNITE_DISCOVERY_HISTORY_SIZE + "' system property.");
-
+                                    else
                                         return;
-                                    }
                                 }
                             }
                             else if (spi.ensured(msg)) {
@@ -1313,9 +1304,6 @@ class ClientImpl extends TcpDiscoveryImpl {
         /** */
         private SocketStream currSock;
 
-        /** Indicates that pending messages are currently processed. */
-        private boolean pending;
-
         /** */
         private Reconnector reconnector;
 
@@ -1361,11 +1349,13 @@ class ClientImpl extends TcpDiscoveryImpl {
                         }
                     }
                     else if (msg == SPI_STOP) {
+                        boolean connected = state == CONNECTED;
+
                         state = STOPPED;
 
                         assert spi.getSpiContext().isStopping();
 
-                        if (currSock != null) {
+                        if (connected && currSock != null) {
                             TcpDiscoveryAbstractMessage leftMsg = new TcpDiscoveryNodeLeftMessage(getLocalNodeId());
 
                             leftMsg.client(true);
@@ -1577,6 +1567,9 @@ class ClientImpl extends TcpDiscoveryImpl {
                 processPingRequest();
 
             spi.stats.onMessageProcessingFinished(msg);
+
+            if (spi.ensured(msg) && state == CONNECTED)
+                lastMsgId = msg.id();
         }
 
         /**
@@ -1630,8 +1623,10 @@ class ClientImpl extends TcpDiscoveryImpl {
                         if (msg.topologyHistory() != null)
                             topHist.putAll(msg.topologyHistory());
                     }
-                    else if (log.isDebugEnabled())
-                        log.debug("Discarding node added message with empty topology: " + msg);
+                    else {
+                        if (log.isDebugEnabled())
+                            log.debug("Discarding node added message with empty topology: " + msg);
+                    }
                 }
                 else if (log.isDebugEnabled())
                     log.debug("Discarding node added message (this message has already been processed) " +
@@ -1651,8 +1646,10 @@ class ClientImpl extends TcpDiscoveryImpl {
                             spi.onExchange(newNodeId, newNodeId, data, null);
                     }
                 }
-                else if (log.isDebugEnabled())
-                    log.debug("Ignore topology message, local node not added to topology: " + msg);
+                else {
+                    if (log.isDebugEnabled())
+                        log.debug("Ignore topology message, local node not added to topology: " + msg);
+                }
             }
         }
 
@@ -1678,6 +1675,11 @@ class ClientImpl extends TcpDiscoveryImpl {
                     long topVer = msg.topologyVersion();
 
                     locNode.order(topVer);
+
+                    for (Iterator<Long> it = topHist.keySet().iterator(); it.hasNext();) {
+                        if (it.next() >= topVer)
+                            it.remove();
+                    }
 
                     Collection<ClusterNode> nodes = updateTopologyHistory(topVer, msg);
 
@@ -1738,7 +1740,7 @@ class ClientImpl extends TcpDiscoveryImpl {
                     assert top != null && top.contains(node) : "Topology does not contain node [msg=" + msg +
                         ", node=" + node + ", top=" + top + ']';
 
-                    if (!pending && joinLatch.getCount() > 0) {
+                    if (state != CONNECTED) {
                         if (log.isDebugEnabled())
                             log.debug("Discarding node add finished message (join process is not finished): " + msg);
 
@@ -1751,8 +1753,10 @@ class ClientImpl extends TcpDiscoveryImpl {
                         spi.stats.onNodeJoined();
                     }
                 }
-                else if (log.isDebugEnabled())
-                    log.debug("Ignore topology message, local node not added to topology: " + msg);
+                else {
+                    if (log.isDebugEnabled())
+                        log.debug("Ignore topology message, local node not added to topology: " + msg);
+                }
             }
         }
 
@@ -1782,7 +1786,7 @@ class ClientImpl extends TcpDiscoveryImpl {
 
                     Collection<ClusterNode> top = updateTopologyHistory(msg.topologyVersion(), msg);
 
-                    if (!pending && joinLatch.getCount() > 0) {
+                    if (state != CONNECTED) {
                         if (log.isDebugEnabled())
                             log.debug("Discarding node left message (join process is not finished): " + msg);
 
@@ -1793,8 +1797,10 @@ class ClientImpl extends TcpDiscoveryImpl {
 
                     spi.stats.onNodeLeft();
                 }
-                else if (log.isDebugEnabled())
-                    log.debug("Ignore topology message, local node not added to topology: " + msg);
+                else {
+                    if (log.isDebugEnabled())
+                        log.debug("Ignore topology message, local node not added to topology: " + msg);
+                }
             }
         }
 
@@ -1835,7 +1841,7 @@ class ClientImpl extends TcpDiscoveryImpl {
 
                 Collection<ClusterNode> top = updateTopologyHistory(msg.topologyVersion(), msg);
 
-                if (!pending && joinLatch.getCount() > 0) {
+                if (state != CONNECTED) {
                     if (log.isDebugEnabled())
                         log.debug("Discarding node failed message (join process is not finished): " + msg);
 
@@ -1908,18 +1914,11 @@ class ClientImpl extends TcpDiscoveryImpl {
 
                     reconnector = null;
 
-                    pending = true;
+                    for (TcpDiscoveryAbstractMessage pendingMsg : msg.pendingMessages()) {
+                        if (log.isDebugEnabled())
+                            log.debug("Process pending message on reconnect [msg=" + pendingMsg + ']');
 
-                    try {
-                        for (TcpDiscoveryAbstractMessage pendingMsg : msg.pendingMessages()) {
-                            if (log.isDebugEnabled())
-                                log.debug("Process pending message on reconnect [msg=" + pendingMsg + ']');
-
-                            processDiscoveryMessage(pendingMsg);
-                        }
-                    }
-                    finally {
-                        pending = false;
+                        processDiscoveryMessage(pendingMsg);
                     }
                 }
                 else {
@@ -1947,7 +1946,7 @@ class ClientImpl extends TcpDiscoveryImpl {
          * @param msg Message.
          */
         private void processCustomMessage(TcpDiscoveryCustomEventMessage msg) {
-            if (msg.verified() && state == CONNECTED) {
+            if (state == CONNECTED) {
                 DiscoverySpiListener lsnr = spi.lsnr;
 
                 if (lsnr != null) {
@@ -2119,6 +2118,11 @@ class ClientImpl extends TcpDiscoveryImpl {
          */
         InputStream stream() {
             return in;
+        }
+
+        /** {@inheritDoc} */
+        public String toString() {
+            return sock.toString();
         }
     }
 
