@@ -1956,7 +1956,7 @@ public class TcpDiscoverySpi extends IgniteSpiAdapter implements DiscoverySpi, T
      * <p>
      * This method is intended for test purposes only.
      */
-    public void simulateNodeFailure() {
+    void simulateNodeFailure() {
         impl.simulateNodeFailure();
     }
 

@@ -17,6 +17,9 @@
 
 package org.apache.ignite.spi.discovery.tcp;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CyclicBarrier;
@@ -28,18 +31,25 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteClientDisconnectedException;
 import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.events.DiscoveryEvent;
+import org.apache.ignite.events.Event;
 import org.apache.ignite.internal.IgniteClientDisconnectedCheckedException;
 import org.apache.ignite.internal.IgniteInternalFuture;
 import org.apache.ignite.internal.IgniteKernal;
+import org.apache.ignite.internal.client.util.GridConcurrentHashSet;
 import org.apache.ignite.internal.util.typedef.G;
 import org.apache.ignite.internal.util.typedef.X;
 import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.lang.IgnitePredicate;
+import org.apache.ignite.spi.IgniteSpiException;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.TcpDiscoveryIpFinder;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
 import org.apache.ignite.testframework.GridTestUtils;
 import org.apache.ignite.testframework.junits.common.GridCommonAbstractTest;
 
 import static org.apache.ignite.events.EventType.EVT_JOB_MAPPED;
+import static org.apache.ignite.events.EventType.EVT_NODE_FAILED;
+import static org.apache.ignite.events.EventType.EVT_NODE_LEFT;
 import static org.apache.ignite.events.EventType.EVT_TASK_FAILED;
 import static org.apache.ignite.events.EventType.EVT_TASK_FINISHED;
 
@@ -57,7 +67,13 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
     private static final ThreadLocal<Boolean> clientFlagPerThread = new ThreadLocal<>();
 
     /** */
+    private static final ThreadLocal<UUID> nodeId = new ThreadLocal<>();
+
+    /** */
     private static volatile boolean clientFlagGlobal;
+
+    /** */
+    private static GridConcurrentHashSet<UUID> failedNodes = new GridConcurrentHashSet<>();
 
     /**
      * @return Client node flag.
@@ -83,6 +99,14 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
     @Override protected IgniteConfiguration getConfiguration(String gridName) throws Exception {
         IgniteConfiguration cfg = super.getConfiguration(gridName);
 
+        UUID id = nodeId.get();
+
+        if (id != null) {
+            cfg.setNodeId(id);
+
+            nodeId.set(null);
+        }
+
         if (client())
             cfg.setClientMode(true);
 
@@ -90,6 +114,22 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
             setIpFinder(ipFinder).
             setJoinTimeout(60_000).
             setNetworkTimeout(60_000));
+
+        int[] evts = {EVT_NODE_FAILED, EVT_NODE_LEFT};
+
+        Map<IgnitePredicate<? extends Event>, int[]> lsnrs = new HashMap<>();
+
+        lsnrs.put(new IgnitePredicate<Event>() {
+            @Override public boolean apply(Event evt) {
+                DiscoveryEvent discoveryEvt = (DiscoveryEvent)evt;
+
+                failedNodes.add(discoveryEvt.eventNode().id());
+
+                return true;
+            }
+        }, evts);
+
+        cfg.setLocalEventListeners(lsnrs);
 
         cfg.setCacheConfiguration();
 
@@ -105,6 +145,8 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
         stopAllGrids();
 
         super.afterTest();
+
+        failedNodes.clear();
     }
 
     /** {@inheritDoc} */
@@ -205,6 +247,10 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
 
                                     log.info("Start client: " + startIdx);
 
+                                    UUID id = UUID.randomUUID();
+
+                                    nodeId.set(id);
+
                                     try {
                                         Ignite ignite = startGrid(startIdx);
 
@@ -218,8 +264,12 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
                                         if (X.hasCause(e, IgniteClientDisconnectedCheckedException.class) ||
                                             X.hasCause(e, IgniteClientDisconnectedException.class))
                                             log.info("Client disconnected: " + e);
-                                        else
-                                            throw e;
+                                        else {
+                                            if (failedNodes.contains(id) && X.hasCause(e, IgniteSpiException.class))
+                                                log.info("Client failed: " + e);
+                                            else
+                                                throw e;
+                                        }
                                     }
                                 }
                             }

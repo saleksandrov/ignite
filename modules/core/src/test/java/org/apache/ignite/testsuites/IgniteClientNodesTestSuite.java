@@ -18,7 +18,7 @@
 package org.apache.ignite.testsuites;
 
 import junit.framework.TestSuite;
-import org.apache.ignite.internal.IgniteClientReconnectMassiveShutdownTest;
+import org.apache.ignite.spi.discovery.tcp.IgniteClientReconnectMassiveShutdownTest;
 import org.apache.ignite.internal.processors.cache.distributed.IgniteCacheClientNodeConcurrentStart;
 import org.apache.ignite.internal.processors.cache.distributed.IgniteCacheClientReconnectTest;
 import org.apache.ignite.internal.processors.cache.distributed.IgniteCacheManyClientsTest;
@@ -33,6 +33,12 @@ public class IgniteClientNodesTestSuite extends TestSuite {
      */
     public static TestSuite suite() throws Exception {
         TestSuite suite = new TestSuite("Ignite Client Nodes Reconnect Test Suite");
+
+        suite.addTest(IgniteClientReconnectTestSuite.suite());
+
+        suite.addTestSuite(IgniteCacheManyClientsTest.class);
+        suite.addTestSuite(IgniteCacheClientNodeConcurrentStart.class);
+        suite.addTestSuite(IgniteCacheClientReconnectTest.class);
 
         suite.addTestSuite(IgniteClientReconnectMassiveShutdownTest.class);
 
