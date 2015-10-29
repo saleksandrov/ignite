@@ -1396,25 +1396,6 @@ class ServerImpl extends TcpDiscoveryImpl {
             TcpDiscoveryNode node = nodeAddedMsg.node();
 
             if (node.id().equals(destNodeId)) {
-                Collection<TcpDiscoveryNode> allNodes = ring.allNodes();
-
-                Collection<TcpDiscoveryNode> topToSnd = nodeAddedMsg.topology();
-
-                if (topToSnd == null)
-                    topToSnd = new ArrayList<>(allNodes.size());
-
-                for (TcpDiscoveryNode n0 : allNodes) {
-                    assert n0.internalOrder() != 0 : n0;
-
-                    // Skip next node and nodes added after next
-                    // in case this message is resent due to failures/leaves.
-                    // There will be separate messages for nodes with greater
-                    // internal order.
-                    if (n0.internalOrder() < nodeAddedMsg.node().internalOrder())
-                        topToSnd.add(n0);
-                }
-
-                nodeAddedMsg.topology(topToSnd);
                 nodeAddedMsg.messages(msgs, discardMsgId, discardCustomMsgId);
 
                 Map<Long, Collection<ClusterNode>> hist;
@@ -1436,7 +1417,6 @@ class ServerImpl extends TcpDiscoveryImpl {
             // Nullify topology before registration.
             TcpDiscoveryNodeAddedMessage nodeAddedMsg = (TcpDiscoveryNodeAddedMessage)msg;
 
-            nodeAddedMsg.topology(null);
             nodeAddedMsg.topologyHistory(null);
             nodeAddedMsg.messages(null, null, null);
         }
@@ -3177,8 +3157,13 @@ class ServerImpl extends TcpDiscoveryImpl {
                                 log.debug("Failing reconnecting client node because failed to restore pending " +
                                     "messages [locNodeId=" + locNodeId + ", clientNodeId=" + nodeId + ']');
 
-                            processNodeFailedMessage(new TcpDiscoveryNodeFailedMessage(locNodeId,
-                                node.id(), node.internalOrder()));
+                            TcpDiscoveryNodeFailedMessage nodeFailedMsg = new TcpDiscoveryNodeFailedMessage(locNodeId,
+                                node.id(), node.internalOrder());
+
+                            processNodeFailedMessage(nodeFailedMsg);
+
+                            if (nodeFailedMsg.verified())
+                                msgHist.add(nodeFailedMsg);
                         }
                     }
                     else if (log.isDebugEnabled())
@@ -3271,20 +3256,18 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                 msg.verify(locNodeId);
 
-                if (node.isClient()) {
-                    Collection<TcpDiscoveryNode> allNodes = ring.allNodes();
+                Collection<TcpDiscoveryNode> allNodes = ring.allNodes();
 
-                    Collection<TcpDiscoveryNode> top = new ArrayList<>(allNodes.size());
+                Collection<TcpDiscoveryNode> top = new ArrayList<>(allNodes.size());
 
-                    for (TcpDiscoveryNode n0 : allNodes) {
-                        assert n0.internalOrder() > 0 : n0;
+                for (TcpDiscoveryNode n0 : allNodes) {
+                    assert n0.internalOrder() > 0 : n0;
 
-                        if (n0.internalOrder() < node.internalOrder())
-                            top.add(n0);
-                    }
-
-                    msg.topology(top);
+                    if (n0.internalOrder() < node.internalOrder())
+                        top.add(n0);
                 }
+
+                msg.topology(top);
             }
             else if (!locNodeId.equals(node.id()) && ring.node(node.id()) != null) {
                 // Local node already has node from message in local topology.
@@ -3448,7 +3431,6 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                             // Clear data to minimize message size.
                             msg.messages(null, null, null);
-                            msg.topology(null);
                             msg.topologyHistory(null);
                             msg.clearDiscoveryData();
                         }
@@ -4188,9 +4170,15 @@ class ServerImpl extends TcpDiscoveryImpl {
                                         failedNode = failedNodes.contains(clientNode);
                                     }
 
-                                    if (!failedNode)
-                                        processNodeFailedMessage(new TcpDiscoveryNodeFailedMessage(locNodeId,
-                                            clientNode.id(), clientNode.internalOrder()));
+                                    if (!failedNode) {
+                                        TcpDiscoveryNodeFailedMessage nodeFailedMsg = new TcpDiscoveryNodeFailedMessage(
+                                            locNodeId, clientNode.id(), clientNode.internalOrder());
+
+                                        processNodeFailedMessage(nodeFailedMsg);
+
+                                        if (nodeFailedMsg.verified())
+                                            msgHist.add(nodeFailedMsg);
+                                    }
                                 }
                             }
                         }
@@ -4416,8 +4404,12 @@ class ServerImpl extends TcpDiscoveryImpl {
             if (joiningNodes.isEmpty() && isLocalNodeCoordinator()) {
                 TcpDiscoveryCustomEventMessage msg;
 
-                while ((msg = pendingCustomMsgs.poll()) != null)
+                while ((msg = pendingCustomMsgs.poll()) != null) {
                     processCustomMessage(msg);
+
+                    if (msg.verified())
+                        msgHist.add(msg);
+                }
             }
         }
 

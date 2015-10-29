@@ -158,7 +158,9 @@ public class TcpDiscoveryNodeAddedMessage extends TcpDiscoveryAbstractMessage {
      *
      * @param top Current topology.
      */
-    public void topology(@Nullable Collection<TcpDiscoveryNode> top) {
+    public void topology(Collection<TcpDiscoveryNode> top) {
+        assert top != null;
+
         this.top = top;
     }
 

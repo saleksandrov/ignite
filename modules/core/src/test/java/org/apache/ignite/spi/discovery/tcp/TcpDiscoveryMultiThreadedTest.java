@@ -113,7 +113,7 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
         cfg.setDiscoverySpi(new TcpDiscoverySpi().
             setIpFinder(ipFinder).
             setJoinTimeout(60_000).
-            setNetworkTimeout(60_000));
+            setNetworkTimeout(10_000));
 
         int[] evts = {EVT_NODE_FAILED, EVT_NODE_LEFT};
 
@@ -334,7 +334,7 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
                 GRID_CNT - 1,
                 "server-restart");
 
-            final long timeToExec = 2 * 60 * 1000;
+            final long timeToExec = getTestTimeout() - 60_000;
 
             final long endTime = System.currentTimeMillis() + timeToExec;
 
@@ -354,6 +354,8 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
                     throw err;
                 }
             }
+
+            log.info("Stop test.");
 
             done.set(true);
 
