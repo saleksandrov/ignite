@@ -205,7 +205,7 @@ public class IgniteClientReconnectMassiveShutdownTest extends GridCommonAbstract
                     return null;
                 }
             },
-            CLIENT_GRID_CNT);
+            CLIENT_GRID_CNT, "client-thread");
 
         try {
             // Killing a half of server nodes.
@@ -261,8 +261,7 @@ public class IgniteClientReconnectMassiveShutdownTest extends GridCommonAbstract
                         return null;
                     }
                 },
-                assassins.size()
-            );
+                assassins.size(), "kill-thread");
 
             srvsShutdownFut.get();
 
