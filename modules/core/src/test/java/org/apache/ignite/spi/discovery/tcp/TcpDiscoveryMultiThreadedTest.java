@@ -208,7 +208,7 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
     /**
      * @throws Exception If any error occurs.
      */
-    public void testMultiThreadedClientsServersRestart() throws Throwable {
+    public void _testMultiThreadedClientsServersRestart() throws Throwable {
         final AtomicBoolean done = new AtomicBoolean();
 
         try {
