@@ -161,6 +161,8 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
      * @throws Exception If any error occurs.
      */
     public void testMultiThreadedClientsRestart() throws Exception {
+        fail("https://issues.apache.org/jira/browse/IGNITE-1123");
+
         final AtomicBoolean done = new AtomicBoolean();
 
         try {
@@ -191,8 +193,8 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
                         return null;
                     }
                 },
-                CLIENT_GRID_CNT
-            );
+                CLIENT_GRID_CNT,
+                "client-restart");
 
             Thread.sleep(getTestTimeout() - 60 * 1000);
 
@@ -208,7 +210,9 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
     /**
      * @throws Exception If any error occurs.
      */
-    public void _testMultiThreadedClientsServersRestart() throws Throwable {
+    public void testMultiThreadedClientsServersRestart() throws Throwable {
+        fail("https://issues.apache.org/jira/browse/IGNITE-1123");
+
         final AtomicBoolean done = new AtomicBoolean();
 
         try {
