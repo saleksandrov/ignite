@@ -267,7 +267,7 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
                                     catch (Exception e) {
                                         if (X.hasCause(e, ClusterTopologyCheckedException.class))
                                             log.info("Client failed to start: " + e);
-                                        if (X.hasCause(e, IgniteClientDisconnectedCheckedException.class) ||
+                                        else if (X.hasCause(e, IgniteClientDisconnectedCheckedException.class) ||
                                             X.hasCause(e, IgniteClientDisconnectedException.class))
                                             log.info("Client disconnected: " + e);
                                         else {
