@@ -401,7 +401,7 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
     /**
      * @throws Exception If any error occurs.
      */
-    public void testTopologyVersion() throws Exception {
+    public void _testTopologyVersion() throws Exception {
         clientFlagGlobal = false;
 
         startGridsMultiThreaded(GRID_CNT);
