@@ -60,7 +60,7 @@ import static org.apache.ignite.events.EventType.EVT_TASK_FINISHED;
  */
 public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
     /** */
-    private static final int GRID_CNT = 10;
+    private static final int GRID_CNT = 5;
 
     /** */
     private static final int CLIENT_GRID_CNT = 5;
