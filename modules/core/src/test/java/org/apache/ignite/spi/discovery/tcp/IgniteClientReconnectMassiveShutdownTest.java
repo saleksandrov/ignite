@@ -22,6 +22,7 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.cache.CacheException;
@@ -41,6 +42,7 @@ import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
 import org.apache.ignite.testframework.junits.common.GridCommonAbstractTest;
 import org.apache.ignite.transactions.Transaction;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.apache.ignite.cache.CacheAtomicityMode.TRANSACTIONAL;
 import static org.apache.ignite.cache.CacheMemoryMode.OFFHEAP_TIERED;
 import static org.apache.ignite.cache.CacheMode.PARTITIONED;
@@ -141,6 +143,8 @@ public class IgniteClientReconnectMassiveShutdownTest extends GridCommonAbstract
 
         IgniteCache<String, Integer> cache = client.getOrCreateCache(cfg);
 
+        assertNotNull(cache);
+
         HashMap<String, Integer> put = new HashMap<>();
 
         // Load some data.
@@ -154,6 +158,8 @@ public class IgniteClientReconnectMassiveShutdownTest extends GridCommonAbstract
 
         for (int i = GRID_CNT; i < GRID_CNT + CLIENT_GRID_CNT; i++)
             clientIdx.add(i);
+
+        final CountDownLatch latch = new CountDownLatch(CLIENT_GRID_CNT);
 
         IgniteInternalFuture<?> clientsFut = multithreadedAsync(
             new Callable<Object>() {
@@ -173,6 +179,8 @@ public class IgniteClientReconnectMassiveShutdownTest extends GridCommonAbstract
                     IgniteTransactions txs = ignite.transactions();
 
                     Random rand = new Random();
+
+                    latch.countDown();
 
                     while (!done.get()) {
                         try (Transaction tx = txs.txStart(PESSIMISTIC, REPEATABLE_READ)) {
@@ -208,6 +216,8 @@ public class IgniteClientReconnectMassiveShutdownTest extends GridCommonAbstract
                 }
             },
             CLIENT_GRID_CNT, "client-thread");
+
+        assertTrue(latch.await(10, SECONDS));
 
         try {
             // Killing a half of server nodes.
