@@ -37,6 +37,7 @@ import org.apache.ignite.internal.IgniteClientDisconnectedCheckedException;
 import org.apache.ignite.internal.IgniteInternalFuture;
 import org.apache.ignite.internal.IgniteKernal;
 import org.apache.ignite.internal.client.util.GridConcurrentHashSet;
+import org.apache.ignite.internal.cluster.ClusterTopologyCheckedException;
 import org.apache.ignite.internal.util.typedef.G;
 import org.apache.ignite.internal.util.typedef.X;
 import org.apache.ignite.internal.util.typedef.internal.U;
@@ -264,6 +265,8 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
                                         break;
                                     }
                                     catch (Exception e) {
+                                        if (X.hasCause(e, ClusterTopologyCheckedException.class))
+                                            log.info("Client failed to start: " + e);
                                         if (X.hasCause(e, IgniteClientDisconnectedCheckedException.class) ||
                                             X.hasCause(e, IgniteClientDisconnectedException.class))
                                             log.info("Client disconnected: " + e);
