@@ -1778,7 +1778,9 @@ class ServerImpl extends TcpDiscoveryImpl {
                     Collection<TcpDiscoveryNode> top = new ArrayList<>(allNodes.size());
 
                     for (TcpDiscoveryNode n0 : allNodes) {
-                        if (n0.internalOrder() != 0 && n0.internalOrder() < node.internalOrder())
+                        assert n0.internalOrder() > 0;
+
+                        if (n0.internalOrder() < node.internalOrder())
                             top.add(n0);
                     }
 
