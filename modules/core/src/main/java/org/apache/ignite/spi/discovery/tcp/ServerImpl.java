@@ -1454,17 +1454,17 @@ class ServerImpl extends TcpDiscoveryImpl {
             tmp = U.arrayList(readers);
         }
 
-        for (ClientMessageWorker msgWorker : clientMsgWorkers.values()) {
-            U.interrupt(msgWorker);
-
-            U.join(msgWorker, log);
-        }
-
         U.interrupt(tmp);
         U.joinThreads(tmp, log);
 
         U.interrupt(msgWorker);
         U.join(msgWorker, log);
+
+        for (ClientMessageWorker msgWorker : clientMsgWorkers.values()) {
+            U.interrupt(msgWorker);
+
+            U.join(msgWorker, log);
+        }
 
         U.interrupt(statsPrinter);
         U.join(statsPrinter, log);
