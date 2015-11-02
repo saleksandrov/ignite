@@ -133,7 +133,7 @@ public class IgniteClientReconnectMassiveShutdownTest extends GridCommonAbstract
 
         assertTrue(client.configuration().isClientMode());
 
-        CacheConfiguration<String, Integer> cfg = new CacheConfiguration<>();
+        final CacheConfiguration<String, Integer> cfg = new CacheConfiguration<>();
 
         cfg.setCacheMode(PARTITIONED);
         cfg.setAtomicityMode(TRANSACTIONAL);
@@ -173,7 +173,7 @@ public class IgniteClientReconnectMassiveShutdownTest extends GridCommonAbstract
 
                         assertTrue(ignite.configuration().isClientMode());
 
-                        IgniteCache<String, Integer> cache = ignite.cache(null);
+                        IgniteCache<String, Integer> cache = ignite.getOrCreateCache(cfg);
 
                         assertNotNull(cache);
 
@@ -224,7 +224,7 @@ public class IgniteClientReconnectMassiveShutdownTest extends GridCommonAbstract
             },
             CLIENT_GRID_CNT, "client-thread");
 
-        assertTrue(latch.await(60, SECONDS));
+        assertTrue(latch.await(10, SECONDS));
 
         try {
             // Killing a half of server nodes.
