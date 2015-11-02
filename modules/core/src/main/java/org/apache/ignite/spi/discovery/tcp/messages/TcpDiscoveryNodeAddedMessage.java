@@ -189,7 +189,7 @@ public class TcpDiscoveryNodeAddedMessage extends TcpDiscoveryAbstractMessage {
      * @param top Topology at the moment when client joined.
      */
     public void clientTopology(Collection<TcpDiscoveryNode> top) {
-        //assert top != null && !top.isEmpty() : top;
+        assert top != null && !top.isEmpty() : top;
 
         this.clientTop = top;
     }
