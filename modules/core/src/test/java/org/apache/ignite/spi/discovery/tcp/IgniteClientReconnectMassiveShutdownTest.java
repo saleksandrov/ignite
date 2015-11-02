@@ -164,55 +164,62 @@ public class IgniteClientReconnectMassiveShutdownTest extends GridCommonAbstract
         IgniteInternalFuture<?> clientsFut = multithreadedAsync(
             new Callable<Object>() {
                 @Override public Object call() throws Exception {
-                    int idx = clientIdx.take();
+                    try {
+                        int idx = clientIdx.take();
 
-                    Ignite ignite = grid(idx);
+                        Ignite ignite = grid(idx);
 
-                    Thread.currentThread().setName("client-thread-" + ignite.name());
+                        Thread.currentThread().setName("client-thread-" + ignite.name());
 
-                    assertTrue(ignite.configuration().isClientMode());
+                        assertTrue(ignite.configuration().isClientMode());
 
-                    IgniteCache<String, Integer> cache = ignite.cache(null);
+                        IgniteCache<String, Integer> cache = ignite.cache(null);
 
-                    assertNotNull(cache);
+                        assertNotNull(cache);
 
-                    IgniteTransactions txs = ignite.transactions();
+                        IgniteTransactions txs = ignite.transactions();
 
-                    Random rand = new Random();
+                        Random rand = new Random();
 
-                    latch.countDown();
+                        latch.countDown();
 
-                    while (!done.get()) {
-                        try (Transaction tx = txs.txStart(PESSIMISTIC, REPEATABLE_READ)) {
-                            cache.put(String.valueOf(rand.nextInt(10_000)), rand.nextInt(50_000));
+                        while (!done.get()) {
+                            try (Transaction tx = txs.txStart(PESSIMISTIC, REPEATABLE_READ)) {
+                                cache.put(String.valueOf(rand.nextInt(10_000)), rand.nextInt(50_000));
 
-                            tx.commit();
-                        }
-                        catch (ClusterTopologyException ex) {
-                            ex.retryReadyFuture().get();
-                        }
-                        catch (IgniteException | CacheException e) {
-                            if (X.hasCause(e, IgniteClientDisconnectedException.class)) {
-                                IgniteClientDisconnectedException cause = X.cause(e,
-                                    IgniteClientDisconnectedException.class);
-
-                                assert cause != null;
-
-                                cause.reconnectFuture().get();
+                                tx.commit();
                             }
-                            else if (X.hasCause(e, ClusterTopologyException.class)) {
-                                ClusterTopologyException cause = X.cause(e, ClusterTopologyException.class);
-
-                                assert cause != null;
-
-                                cause.retryReadyFuture().get();
+                            catch (ClusterTopologyException ex) {
+                                ex.retryReadyFuture().get();
                             }
-                            else
-                                throw e;
+                            catch (IgniteException | CacheException e) {
+                                if (X.hasCause(e, IgniteClientDisconnectedException.class)) {
+                                    IgniteClientDisconnectedException cause = X.cause(e,
+                                        IgniteClientDisconnectedException.class);
+
+                                    assert cause != null;
+
+                                    cause.reconnectFuture().get();
+                                }
+                                else if (X.hasCause(e, ClusterTopologyException.class)) {
+                                    ClusterTopologyException cause = X.cause(e, ClusterTopologyException.class);
+
+                                    assert cause != null;
+
+                                    cause.retryReadyFuture().get();
+                                }
+                                else
+                                    throw e;
+                            }
                         }
+
+                        return null;
                     }
+                    catch (Throwable e) {
+                        log.error("Unexpected error: " + e, e);
 
-                    return null;
+                        throw e;
+                    }
                 }
             },
             CLIENT_GRID_CNT, "client-thread");

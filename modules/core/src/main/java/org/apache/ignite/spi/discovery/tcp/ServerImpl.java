@@ -3241,6 +3241,9 @@ class ServerImpl extends TcpDiscoveryImpl {
                 }
             }
             else {
+                if (isLocalNodeCoordinator())
+                    addMessage(new TcpDiscoveryDiscardMessage(locNodeId, msg.id(), false));
+
                 if (isLocNodeRouter) {
                     ClientMessageWorker wrk = clientMsgWorkers.get(nodeId);
 
@@ -3251,7 +3254,7 @@ class ServerImpl extends TcpDiscoveryImpl {
                             locNodeId + ", clientNodeId=" + nodeId + ']');
                 }
                 else {
-                    if (ring.hasRemoteNodes() && !locNodeId.equals(msg.verifierNodeId()))
+                    if (ring.hasRemoteNodes() && !isLocalNodeCoordinator())
                         sendMessageAcrossRing(msg);
                 }
             }
