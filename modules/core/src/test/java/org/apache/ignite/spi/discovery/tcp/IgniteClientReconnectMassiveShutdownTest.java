@@ -168,6 +168,8 @@ public class IgniteClientReconnectMassiveShutdownTest extends GridCommonAbstract
 
                     IgniteCache<String, Integer> cache = ignite.cache(null);
 
+                    assertNotNull(cache);
+
                     IgniteTransactions txs = ignite.transactions();
 
                     Random rand = new Random();
