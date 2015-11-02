@@ -161,7 +161,7 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
     /**
      * @throws Exception If any error occurs.
      */
-    public void _testMultiThreadedClientsRestart() throws Exception {
+    public void testMultiThreadedClientsRestart() throws Exception {
         final AtomicBoolean done = new AtomicBoolean();
 
         try {
@@ -210,6 +210,8 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
      * @throws Exception If any error occurs.
      */
     public void testMultiThreadedClientsServersRestart() throws Throwable {
+        fail("https://issues.apache.org/jira/browse/IGNITE-1123");
+
         final AtomicBoolean done = new AtomicBoolean();
 
         try {
@@ -376,7 +378,7 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
     /**
      * @throws Exception If any error occurs.
      */
-    public void _testTopologyVersion() throws Exception {
+    public void testTopologyVersion() throws Exception {
         clientFlagGlobal = false;
 
         startGridsMultiThreaded(GRID_CNT);
@@ -400,7 +402,7 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
     /**
      * @throws Exception If any error occurs.
      */
-    public void _testMultipleStartOnCoordinatorStop() throws Exception{
+    public void testMultipleStartOnCoordinatorStop() throws Exception{
         for (int k = 0; k < 3; k++) {
             log.info("Iteration: " + k);
 

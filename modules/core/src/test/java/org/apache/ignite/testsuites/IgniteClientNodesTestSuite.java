@@ -36,6 +36,12 @@ public class IgniteClientNodesTestSuite extends TestSuite {
 
         suite.addTestSuite(IgniteClientReconnectMassiveShutdownTest.class);
 
+        suite.addTest(IgniteClientReconnectTestSuite.suite());
+
+        suite.addTestSuite(IgniteCacheManyClientsTest.class);
+        suite.addTestSuite(IgniteCacheClientNodeConcurrentStart.class);
+        suite.addTestSuite(IgniteCacheClientReconnectTest.class);
+
         return suite;
     }
 }
