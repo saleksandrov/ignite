@@ -224,7 +224,7 @@ public class IgniteClientReconnectMassiveShutdownTest extends GridCommonAbstract
             },
             CLIENT_GRID_CNT, "client-thread");
 
-        assertTrue(latch.await(10, SECONDS));
+        assertTrue(latch.await(60, SECONDS));
 
         try {
             // Killing a half of server nodes.
