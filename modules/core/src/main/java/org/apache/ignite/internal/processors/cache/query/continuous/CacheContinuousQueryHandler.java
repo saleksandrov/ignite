@@ -612,30 +612,32 @@ class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
         assert e != null;
         assert snds != null;
 
-        if (internal) {
-            if (e.isFiltered())
-                return null;
-            else
-                return e;
-        }
+        return e;
 
-        // Initial query entry.
-        // This events should be fired immediately.
-        if (e.updateIndex() == -1)
-            return e;
-
-        HoleBuffer buf = snds.get(e.partition());
-
-        if (buf == null) {
-            buf = new HoleBuffer();
-
-            HoleBuffer oldRec = snds.putIfAbsent(e.partition(), buf);
-
-            if (oldRec != null)
-                buf = oldRec;
-        }
-
-        return buf.handle(e);
+//        if (internal) {
+//            if (e.isFiltered())
+//                return null;
+//            else
+//                return e;
+//        }
+//
+//        // Initial query entry.
+//        // This events should be fired immediately.
+//        if (e.updateIndex() == -1)
+//            return e;
+//
+//        HoleBuffer buf = snds.get(e.partition());
+//
+//        if (buf == null) {
+//            buf = new HoleBuffer();
+//
+//            HoleBuffer oldRec = snds.putIfAbsent(e.partition(), buf);
+//
+//            if (oldRec != null)
+//                buf = oldRec;
+//        }
+//
+//        return buf.handle(e);
     }
 
     /**
