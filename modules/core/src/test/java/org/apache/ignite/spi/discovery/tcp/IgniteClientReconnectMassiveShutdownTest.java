@@ -36,6 +36,7 @@ import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.internal.IgniteInternalFuture;
 import org.apache.ignite.internal.util.typedef.X;
+import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.spi.communication.tcp.TcpCommunicationSpi;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.TcpDiscoveryIpFinder;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
@@ -224,9 +225,15 @@ public class IgniteClientReconnectMassiveShutdownTest extends GridCommonAbstract
             },
             CLIENT_GRID_CNT, "client-thread");
 
-        assertTrue(latch.await(10, SECONDS));
-
         try {
+            if (!latch.await(30, SECONDS)) {
+                log.warning("Failed to wait for for clients start.");
+
+                U.dumpThreads(log);
+
+                fail("Failed to wait for for clients start.");
+            }
+
             // Killing a half of server nodes.
             final int srvsToKill = GRID_CNT / 2;
 
