@@ -212,21 +212,22 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
     public void _testMultiThreadedClientsServersRestart() throws Throwable {
         fail("https://issues.apache.org/jira/browse/IGNITE-1123");
 
-        multiThreadedClientsServersRestart(true);
+        multiThreadedClientsServersRestart(GRID_CNT, CLIENT_GRID_CNT);
     }
 
     /**
      * @throws Exception If any error occurs.
      */
     public void testMultiThreadedServersRestart() throws Throwable {
-        multiThreadedClientsServersRestart(false);
+        multiThreadedClientsServersRestart(GRID_CNT * 2, 0);
     }
 
     /**
-     * @param clients If {@code true} restarts client nodes.
+     * @param srvs Number of servers.
+     * @param clients Number of clients.
      * @throws Exception If any error occurs.
      */
-    private void multiThreadedClientsServersRestart(boolean clients) throws Throwable {
+    private void multiThreadedClientsServersRestart(int srvs, int clients) throws Throwable {
         final AtomicBoolean done = new AtomicBoolean();
 
         try {
@@ -234,20 +235,20 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
 
             info("Test timeout: " + (getTestTimeout() / (60 * 1000)) + " min.");
 
-            startGridsMultiThreaded(GRID_CNT);
+            startGridsMultiThreaded(srvs);
 
             IgniteInternalFuture<?> clientFut = null;
 
             final AtomicReference<Throwable> error = new AtomicReference<>();
 
-            if (clients) {
+            if (clients > 0) {
                 clientFlagGlobal = true;
 
-                startGridsMultiThreaded(GRID_CNT, CLIENT_GRID_CNT);
+                startGridsMultiThreaded(srvs, clients);
 
                 final BlockingQueue<Integer> clientStopIdxs = new LinkedBlockingQueue<>();
 
-                for (int i = GRID_CNT; i < GRID_CNT + CLIENT_GRID_CNT; i++)
+                for (int i = srvs; i < srvs + clients; i++)
                     clientStopIdxs.add(i);
 
                 final AtomicInteger clientStartIdx = new AtomicInteger(9000);
@@ -311,16 +312,16 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
                             return null;
                         }
                     },
-                    CLIENT_GRID_CNT,
+                    clients,
                     "client-restart");
             }
 
             final BlockingQueue<Integer> srvStopIdxs = new LinkedBlockingQueue<>();
 
-            for (int i = 0; i < GRID_CNT; i++)
+            for (int i = 0; i < srvs; i++)
                 srvStopIdxs.add(i);
 
-            final AtomicInteger srvStartIdx = new AtomicInteger(GRID_CNT + CLIENT_GRID_CNT);
+            final AtomicInteger srvStartIdx = new AtomicInteger(srvs + clients);
 
             IgniteInternalFuture<?> srvFut = multithreadedAsync(
                 new Callable<Object>() {
@@ -358,7 +359,7 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
                         return null;
                     }
                 },
-                GRID_CNT - 1,
+                srvs - 1,
                 "server-restart");
 
             final long timeToExec = getTestTimeout() - 60_000;
