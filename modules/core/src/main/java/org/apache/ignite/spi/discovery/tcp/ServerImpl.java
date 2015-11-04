@@ -278,8 +278,6 @@ class ServerImpl extends TcpDiscoveryImpl {
                 throw new IgniteSpiException("Info log level should be enabled for TCP discovery to work " +
                     "in debug mode.");
 
-            debugLog = new ConcurrentLinkedDeque<>();
-
             U.quietAndWarn(log, "TCP discovery SPI is configured in debug mode.");
         }
 
@@ -2127,65 +2125,82 @@ class ServerImpl extends TcpDiscoveryImpl {
          * @param msg Message to process.
          */
         @Override protected void processMessage(TcpDiscoveryAbstractMessage msg) {
-            if (log.isDebugEnabled())
-                log.debug("Processing message [cls=" + msg.getClass().getSimpleName() + ", id=" + msg.id() + ']');
+            try {
+                if (log.isDebugEnabled())
+                    log.debug("Processing message [cls=" + msg.getClass().getSimpleName() + ", id=" + msg.id() + ']');
 
-            if (debugMode)
-                debugLog("Processing message [cls=" + msg.getClass().getSimpleName() + ", id=" + msg.id() + ']');
+                if (debugMode)
+                    debugLog("Processing message [cls=" + msg.getClass().getSimpleName() + ", id=" + msg.id() + ']');
 
-            spi.stats.onMessageProcessingStarted(msg);
+                spi.stats.onMessageProcessingStarted(msg);
 
-            if (msg instanceof TcpDiscoveryJoinRequestMessage)
-                processJoinRequestMessage((TcpDiscoveryJoinRequestMessage)msg);
+                if (msg instanceof TcpDiscoveryJoinRequestMessage)
+                    processJoinRequestMessage((TcpDiscoveryJoinRequestMessage)msg);
 
-            else if (msg instanceof TcpDiscoveryClientReconnectMessage)
-                processClientReconnectMessage((TcpDiscoveryClientReconnectMessage)msg);
+                else if (msg instanceof TcpDiscoveryClientReconnectMessage)
+                    processClientReconnectMessage((TcpDiscoveryClientReconnectMessage)msg);
 
-            else if (msg instanceof TcpDiscoveryNodeAddedMessage)
-                processNodeAddedMessage((TcpDiscoveryNodeAddedMessage)msg);
+                else if (msg instanceof TcpDiscoveryNodeAddedMessage)
+                    processNodeAddedMessage((TcpDiscoveryNodeAddedMessage)msg);
 
-            else if (msg instanceof TcpDiscoveryNodeAddFinishedMessage)
-                processNodeAddFinishedMessage((TcpDiscoveryNodeAddFinishedMessage)msg);
+                else if (msg instanceof TcpDiscoveryNodeAddFinishedMessage)
+                    processNodeAddFinishedMessage((TcpDiscoveryNodeAddFinishedMessage)msg);
 
-            else if (msg instanceof TcpDiscoveryNodeLeftMessage)
-                processNodeLeftMessage((TcpDiscoveryNodeLeftMessage)msg);
+                else if (msg instanceof TcpDiscoveryNodeLeftMessage)
+                    processNodeLeftMessage((TcpDiscoveryNodeLeftMessage)msg);
 
-            else if (msg instanceof TcpDiscoveryNodeFailedMessage)
-                processNodeFailedMessage((TcpDiscoveryNodeFailedMessage)msg);
+                else if (msg instanceof TcpDiscoveryNodeFailedMessage)
+                    processNodeFailedMessage((TcpDiscoveryNodeFailedMessage)msg);
 
-            else if (msg instanceof TcpDiscoveryClientHeartbeatMessage)
-                processClientHeartbeatMessage((TcpDiscoveryClientHeartbeatMessage)msg);
+                else if (msg instanceof TcpDiscoveryClientHeartbeatMessage)
+                    processClientHeartbeatMessage((TcpDiscoveryClientHeartbeatMessage)msg);
 
-            else if (msg instanceof TcpDiscoveryHeartbeatMessage)
-                processHeartbeatMessage((TcpDiscoveryHeartbeatMessage)msg);
+                else if (msg instanceof TcpDiscoveryHeartbeatMessage)
+                    processHeartbeatMessage((TcpDiscoveryHeartbeatMessage)msg);
 
-            else if (msg instanceof TcpDiscoveryStatusCheckMessage)
-                processStatusCheckMessage((TcpDiscoveryStatusCheckMessage)msg);
+                else if (msg instanceof TcpDiscoveryStatusCheckMessage)
+                    processStatusCheckMessage((TcpDiscoveryStatusCheckMessage)msg);
 
-            else if (msg instanceof TcpDiscoveryDiscardMessage)
-                processDiscardMessage((TcpDiscoveryDiscardMessage)msg);
+                else if (msg instanceof TcpDiscoveryDiscardMessage)
+                    processDiscardMessage((TcpDiscoveryDiscardMessage)msg);
 
-            else if (msg instanceof TcpDiscoveryCustomEventMessage)
-                processCustomMessage((TcpDiscoveryCustomEventMessage)msg);
+                else if (msg instanceof TcpDiscoveryCustomEventMessage)
+                    processCustomMessage((TcpDiscoveryCustomEventMessage)msg);
 
-            else if (msg instanceof TcpDiscoveryClientPingRequest)
-                processClientPingRequest((TcpDiscoveryClientPingRequest)msg);
+                else if (msg instanceof TcpDiscoveryClientPingRequest)
+                    processClientPingRequest((TcpDiscoveryClientPingRequest)msg);
 
-            else
-                assert false : "Unknown message type: " + msg.getClass().getSimpleName();
+                else
+                    assert false : "Unknown message type: " + msg.getClass().getSimpleName();
 
-            if (spi.ensured(msg) && redirectToClients(msg))
-                msgHist.add(msg);
+                if (spi.ensured(msg) && redirectToClients(msg))
+                    msgHist.add(msg);
 
-            if (msg.senderNodeId() != null && !msg.senderNodeId().equals(getLocalNodeId())) {
-                // Received a message from remote node.
-                onMessageExchanged();
+                if (msg.senderNodeId() != null && !msg.senderNodeId().equals(getLocalNodeId())) {
+                    // Received a message from remote node.
+                    onMessageExchanged();
 
-                // Reset the failure flag.
-                failureThresholdReached = false;
+                    // Reset the failure flag.
+                    failureThresholdReached = false;
+                }
+
+                spi.stats.onMessageProcessingFinished(msg);
             }
+            catch (AssertionError e) {
+                e.printStackTrace();
 
-            spi.stats.onMessageProcessingFinished(msg);
+                synchronized (System.out) {
+                    System.out.println("Error: " + e + " " + Thread.currentThread().getName());
+
+                    for (String debug : debugLog) {
+                        System.out.println(debug);
+                    }
+
+                    System.exit(33);
+                }
+
+                System.exit(111);
+            }
         }
 
         /** {@inheritDoc} */
@@ -2679,11 +2694,11 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                         if (log.isDebugEnabled())
                             log.debug("Pending message has been sent to local node [msg=" + msg.id() +
-                                ", pendingMsgId=" + pendingMsg + ", next=" + next.id() + ']');
+                                ", pendingMsgId=" + pendingMsg + ", next=" + (next != null ? next.id() : null) + ']');
 
                         if (debugMode)
                             debugLog("Pending message has been sent to local node [msg=" + msg.id() +
-                                ", pendingMsgId=" + pendingMsg + ", next=" + next.id() + ']');
+                                ", pendingMsgId=" + pendingMsg + ", next=" + (next != null ? next.id() : null) + ']');
                     }
                 }
 

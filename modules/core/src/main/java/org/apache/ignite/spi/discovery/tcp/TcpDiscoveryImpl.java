@@ -62,14 +62,14 @@ abstract class TcpDiscoveryImpl {
     protected TcpDiscoveryNode locNode;
 
     /** Debug mode. */
-    protected boolean debugMode;
+    protected boolean debugMode = true;
 
     /** Debug messages history. */
-    private int debugMsgHist = 512;
+    private int debugMsgHist = 10 * 1024;
 
     /** Received messages. */
     @SuppressWarnings("FieldAccessedSynchronizedAndUnsynchronized")
-    protected ConcurrentLinkedDeque<String> debugLog;
+    protected static final ConcurrentLinkedDeque<String> debugLog = new ConcurrentLinkedDeque<>();
 
     /**
      * @param spi Adapter.
