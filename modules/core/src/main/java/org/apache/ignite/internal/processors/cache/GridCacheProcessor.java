@@ -812,7 +812,8 @@ public class GridCacheProcessor extends GridProcessorAdapter {
 
         marshallerCache().context().preloader().syncFuture().listen(new CIX1<IgniteInternalFuture<?>>() {
             @Override public void applyx(IgniteInternalFuture<?> f) throws IgniteCheckedException {
-                ctx.marshallerContext().onMarshallerCachePreloaded(ctx);
+                if (f.error() == null)
+                    ctx.marshallerContext().onMarshallerCachePreloaded(ctx);
             }
         });
 
