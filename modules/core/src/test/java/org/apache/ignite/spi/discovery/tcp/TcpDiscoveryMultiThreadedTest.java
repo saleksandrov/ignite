@@ -332,12 +332,16 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
                             while (!done.get() && error.get() == null) {
                                 int stopIdx = srvStopIdxs.take();
 
+                                Thread.currentThread().setName("stop-server-" + getTestGridName(stopIdx));
+
                                 log.info("Stop server: " + stopIdx);
 
                                 stopGrid(stopIdx);
 
                                 // Generate unique name to simplify debugging.
                                 int startIdx = srvStartIdx.getAndIncrement();
+
+                                Thread.currentThread().setName("start-server-" + getTestGridName(stopIdx));
 
                                 log.info("Start server: " + startIdx);
 
