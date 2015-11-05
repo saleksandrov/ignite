@@ -70,7 +70,7 @@ abstract class TcpDiscoveryImpl {
     protected boolean debugMode = true;
 
     /** Debug messages history. */
-    private int debugMsgHist = 20 * 1024;
+    private int debugMsgHist = 50 * 1024;
 
     /** Received messages. */
     @SuppressWarnings("FieldAccessedSynchronizedAndUnsynchronized")
