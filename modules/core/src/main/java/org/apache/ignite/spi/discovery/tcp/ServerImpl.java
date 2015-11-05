@@ -1895,9 +1895,9 @@ class ServerImpl extends TcpDiscoveryImpl {
     /**
      * Pending messages container.
      */
-    private static class PendingMessages implements Iterable<TcpDiscoveryAbstractMessage> {
+    private class PendingMessages implements Iterable<TcpDiscoveryAbstractMessage> {
         /** */
-        private static final int MAX = 2 * 1024;
+        private static final int MAX = 3 * 1024;
 
         /** Pending messages. */
         private final Queue<TcpDiscoveryAbstractMessage> msgs = new ArrayDeque<>(MAX * 2);
