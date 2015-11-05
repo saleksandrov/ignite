@@ -39,6 +39,7 @@ import org.apache.ignite.spi.discovery.DiscoverySpiCustomMessage;
 import org.apache.ignite.spi.discovery.tcp.internal.TcpDiscoveryNode;
 import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryAbstractMessage;
 import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryCustomEventMessage;
+import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryDiscardMessage;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -67,7 +68,7 @@ abstract class TcpDiscoveryImpl {
     protected boolean debugMode = true;
 
     /** Debug messages history. */
-    private int debugMsgHist = 100 * 1024;
+    private int debugMsgHist = 20 * 1024;
 
     /** Received messages. */
     @SuppressWarnings("FieldAccessedSynchronizedAndUnsynchronized")
@@ -106,7 +107,7 @@ abstract class TcpDiscoveryImpl {
     protected void debugLog(TcpDiscoveryAbstractMessage discoMsg, String msg) {
         assert debugMode;
 
-        if (discoMsg != null && discoMsg instanceof TcpDiscoveryCustomEventMessage)
+        if ((discoMsg instanceof TcpDiscoveryCustomEventMessage) || (discoMsg instanceof TcpDiscoveryDiscardMessage))
             return;
 
         String msg0 = new SimpleDateFormat("[HH:mm:ss,SSS]").format(new Date(System.currentTimeMillis())) +
