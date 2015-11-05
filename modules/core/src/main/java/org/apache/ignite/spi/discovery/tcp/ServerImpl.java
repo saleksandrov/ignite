@@ -2540,7 +2540,7 @@ class ServerImpl extends TcpDiscoveryImpl {
                                             ", res=" + res + ']');
 
                                     if (debugMode)
-                                        debugLog(null, "Pending message has been sent to next node [msgId=" + msg.id() +
+                                        debugLog(pendingMsg, "Pending message has been sent to next node [msgId=" + msg.id() +
                                             ", pendingMsgId=" + pendingMsg.id() + ", next=" + next.id() +
                                             ", res=" + res + ']');
 
