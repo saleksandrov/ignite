@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.ignite.Ignite;
+import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.IgniteClientDisconnectedException;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.events.DiscoveryEvent;
@@ -343,11 +344,16 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
 
                                 log.info("Start server: " + startIdx);
 
-                                Ignite ignite = startGrid(startIdx);
+                                try {
+                                    Ignite ignite = startGrid(startIdx);
 
-                                assertFalse(ignite.configuration().isClientMode());
+                                    assertFalse(ignite.configuration().isClientMode());
 
-                                srvStopIdxs.add(startIdx);
+                                    srvStopIdxs.add(startIdx);
+                                }
+                                catch (IgniteCheckedException e) {
+                                    log.info("Failed to start: " + e);
+                                }
                             }
                         }
                         catch (Throwable e) {
