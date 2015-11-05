@@ -117,7 +117,7 @@ abstract class TcpDiscoveryImpl {
 
         String msg0 = new SimpleDateFormat("[HH:mm:ss,SSS]").format(new Date(System.currentTimeMillis())) +
             '[' + Thread.currentThread().getName() + "][" + getLocalNodeId() +
-            "-" + locNode.internalOrder() + "] " +
+            "-" + (locNode != null ? locNode.internalOrder() : null) + "] " +
             msg;
 
         debugLog.add(msg0);
@@ -132,6 +132,9 @@ abstract class TcpDiscoveryImpl {
      * @return Local node ID.
      */
     public UUID getLocalNodeId() {
+        if (spi.locNode == null)
+            return null;
+
         return spi.locNode.id();
     }
 
