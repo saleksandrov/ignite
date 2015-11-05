@@ -1941,13 +1941,13 @@ class ServerImpl extends TcpDiscoveryImpl {
             @Nullable IgniteUuid discardId,
             @Nullable IgniteUuid customDiscardId
         ) {
-            this.msgs.clear();
-
+//            this.msgs.clear();
+//
             if (msgs != null)
                 this.msgs.addAll(msgs);
-
-            this.discardId = discardId;
-            this.customDiscardId = customDiscardId;
+//
+//            this.discardId = discardId;
+//            this.customDiscardId = customDiscardId;
         }
 
         /**
