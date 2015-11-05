@@ -2200,7 +2200,10 @@ class ServerImpl extends TcpDiscoveryImpl {
                 e.printStackTrace();
 
                 synchronized (System.out) {
-                    System.out.println("Error: " + e + " " + Thread.currentThread().getName() + ", msg=" + msg);
+                    System.out.println("Error [err=" + e +
+                        ", thread=" + Thread.currentThread().getName() +
+                        ", msg=" + msg +
+                        ", ring= " + ring + ']');
 
                     debugLog(msg, "Error: " + e);
 

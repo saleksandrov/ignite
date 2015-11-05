@@ -71,18 +71,19 @@ public class TcpDiscoveryNode extends GridMetadataAwareAdapter implements Cluste
     private Map<String, Object> attrs;
 
     /** Internal discovery addresses as strings. */
-    @GridToStringInclude
+    @GridToStringExclude
     private Collection<String> addrs;
 
     /** Internal discovery host names as strings. */
+    @GridToStringExclude
     private Collection<String> hostNames;
 
     /** */
-    @GridToStringInclude
+    @GridToStringExclude
     private Collection<InetSocketAddress> sockAddrs;
 
     /** */
-    @GridToStringInclude
+    @GridToStringExclude
     private int discPort;
 
     /** Node metrics. */
@@ -104,6 +105,7 @@ public class TcpDiscoveryNode extends GridMetadataAwareAdapter implements Cluste
     private volatile long lastUpdateTime = U.currentTimeMillis();
 
     /** The most recent time when node exchanged a message with a remote node. */
+    @GridToStringExclude
     private volatile long lastExchangeTime = U.currentTimeMillis();
 
     /** Metrics provider (transient). */
@@ -111,13 +113,13 @@ public class TcpDiscoveryNode extends GridMetadataAwareAdapter implements Cluste
     private DiscoveryMetricsProvider metricsProvider;
 
     /** Visible flag (transient). */
-    @GridToStringExclude
     private boolean visible;
 
     /** Grid local node flag (transient). */
     private boolean loc;
 
     /** Version. */
+    @GridToStringExclude
     private IgniteProductVersion ver;
 
     /** Alive check (used by clients). */
