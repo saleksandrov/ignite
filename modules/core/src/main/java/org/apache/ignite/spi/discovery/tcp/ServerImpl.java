@@ -3602,6 +3602,11 @@ class ServerImpl extends TcpDiscoveryImpl {
                     msg.topologyVersion(ring.incrementTopologyVersion());
 
                     debugLog(msg, "Coordinator incremented topVer=" + ring.topologyVersion() + " " + msg);
+
+                    for (TcpDiscoveryNode ringNode : ring.allNodes()) {
+                        assert ringNode.internalOrder() >= node.order() || ringNode.order() > 0 :
+                            "Invalid node [node=" + node + ", ring=" + ring + ']';
+                    }
                 }
 
                 msg.verify(locNodeId);
