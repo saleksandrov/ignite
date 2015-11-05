@@ -3119,6 +3119,8 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                 nodeAddedMsg.client(msg.client());
 
+                debugLog(nodeAddedMsg, "Process join, internalOrder=" + node.internalOrder() + ", msg=" + nodeAddedMsg);
+
                 processNodeAddedMessage(nodeAddedMsg);
 
                 if (nodeAddedMsg.verified())
@@ -3309,6 +3311,8 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                     TcpDiscoveryNodeAddFinishedMessage addFinishMsg = new TcpDiscoveryNodeAddFinishedMessage(locNodeId,
                         node.id());
+
+                    debugLog(addFinishMsg, "Created finish message: " + addFinishMsg);
 
                     if (node.isClient()) {
                         addFinishMsg.clientDiscoData(msg.oldNodesDiscoveryData());
@@ -3568,8 +3572,11 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                     return;
                 }
-                else
+                else {
+                    debugLog(msg, "Coordinator incremented topVer=" + ring.topologyVersion() + " " + msg);
+
                     msg.topologyVersion(ring.incrementTopologyVersion());
+                }
 
                 msg.verify(locNodeId);
             }
@@ -3643,6 +3650,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                 ring.topologyVersion(topVer);
 
                 node.order(topVer);
+
+                debugLog(msg, "Node set topVer=" + topVer + " " + msg);
 
                 synchronized (mux) {
                     spiState = CONNECTED;
@@ -3761,6 +3770,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                     topVer = ring.incrementTopologyVersion();
 
                     msg.topologyVersion(topVer);
+
+                    debugLog(msg, "Coordinator incremented topVer=" + ring.topologyVersion() + " " + msg);
                 }
                 else {
                     topVer = msg.topologyVersion();
@@ -3768,6 +3779,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                     assert topVer > 0 : "Topology version is empty for message: " + msg;
 
                     boolean b = ring.topologyVersion(topVer);
+
+                    debugLog(msg, "Node set topVer=" + topVer + " " + b + " " + msg);
 
                     assert b : "Topology version has not been updated: [ring=" + ring + ", msg=" + msg +
                         ", lastMsg=" + lastMsg + ", spiState=" + spiStateCopy() + ']';
@@ -3944,6 +3957,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                     topVer = ring.incrementTopologyVersion();
 
                     msg.topologyVersion(topVer);
+
+                    debugLog(msg, "Coordinator incremented topVer=" + ring.topologyVersion() + " " + msg);
                 }
                 else {
                     topVer = msg.topologyVersion();
@@ -3951,6 +3966,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                     assert topVer > 0 : "Topology version is empty for message: " + msg;
 
                     boolean b = ring.topologyVersion(topVer);
+
+                    debugLog(msg, "Node set topVer=" + topVer + " " + b + " " + msg);
 
                     assert b : "Topology version has not been updated: [ring=" + ring + ", msg=" + msg +
                         ", lastMsg=" + lastMsg + ", spiState=" + spiStateCopy() + ']';
@@ -4233,6 +4250,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                                     if (!failedNode) {
                                         TcpDiscoveryNodeFailedMessage nodeFailedMsg = new TcpDiscoveryNodeFailedMessage(
                                             locNodeId, clientNode.id(), clientNode.internalOrder());
+
+                                        debugLog(nodeFailedMsg, "Created failed message=" + nodeFailedMsg);
 
                                         processNodeFailedMessage(nodeFailedMsg);
 
