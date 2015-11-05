@@ -3489,6 +3489,9 @@ class ServerImpl extends TcpDiscoveryImpl {
                             spi.gridStartTime = msg.gridStartTime();
 
                             for (TcpDiscoveryNode n : top) {
+                                assert n.internalOrder() < node.internalOrder() :
+                                    "Invalid node [topNode=" + n + ", added=" + node + ']';
+
                                 // Make all preceding nodes and local node visible.
                                 n.visible(true);
                             }
