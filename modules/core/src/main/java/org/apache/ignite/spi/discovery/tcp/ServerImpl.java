@@ -2192,6 +2192,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                 synchronized (System.out) {
                     System.out.println("Error: " + e + " " + Thread.currentThread().getName());
 
+                    debugLog(msg, "Error: " + e);
+
                     for (String debug : debugLog) {
                         System.out.println(debug);
                     }
