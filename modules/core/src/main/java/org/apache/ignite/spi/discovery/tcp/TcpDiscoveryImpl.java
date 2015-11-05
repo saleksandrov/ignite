@@ -109,8 +109,10 @@ abstract class TcpDiscoveryImpl {
     protected void debugLog(TcpDiscoveryAbstractMessage discoMsg, String msg) {
         assert debugMode;
 
-        if ((discoMsg instanceof TcpDiscoveryCustomEventMessage) || (discoMsg instanceof TcpDiscoveryDiscardMessage)
-            || (discoMsg instanceof TcpDiscoveryStatusCheckMessage) || (discoMsg instanceof TcpDiscoveryHeartbeatMessage))
+        if ((discoMsg instanceof TcpDiscoveryCustomEventMessage) ||
+            (discoMsg instanceof TcpDiscoveryDiscardMessage) ||
+            (discoMsg instanceof TcpDiscoveryStatusCheckMessage) ||
+            (discoMsg instanceof TcpDiscoveryHeartbeatMessage))
             return;
 
         String msg0 = new SimpleDateFormat("[HH:mm:ss,SSS]").format(new Date(System.currentTimeMillis())) +

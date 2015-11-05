@@ -191,10 +191,10 @@ class ServerImpl extends TcpDiscoveryImpl {
     private StatisticsPrinter statsPrinter;
 
     /** Failed nodes (but still in topology). */
-    private Collection<TcpDiscoveryNode> failedNodes = new HashSet<>();
+    private final Collection<TcpDiscoveryNode> failedNodes = new HashSet<>();
 
     /** Leaving nodes (but still in topology). */
-    private Collection<TcpDiscoveryNode> leavingNodes = new HashSet<>();
+    private final Collection<TcpDiscoveryNode> leavingNodes = new HashSet<>();
 
     /** If non-shared IP finder is used this flag shows whether IP finder contains local address. */
     private boolean ipFinderHasLocAddr;
@@ -271,6 +271,8 @@ class ServerImpl extends TcpDiscoveryImpl {
     @Override public void spiStart(String gridName) throws IgniteSpiException {
         synchronized (mux) {
             spiState = DISCONNECTED;
+
+            debugLog(null, "spiState=" + spiState);
         }
 
         if (debugMode) {
@@ -356,6 +358,8 @@ class ServerImpl extends TcpDiscoveryImpl {
         if (disconnect) {
             synchronized (mux) {
                 spiState = DISCONNECTING;
+
+                debugLog(null, "spiState=" + spiState);
             }
         }
 
@@ -472,6 +476,8 @@ class ServerImpl extends TcpDiscoveryImpl {
             failedNodes.clear();
 
             spiState = DISCONNECTED;
+
+            debugLog(null, "spiState=" + spiState);
         }
     }
 
@@ -783,6 +789,8 @@ class ServerImpl extends TcpDiscoveryImpl {
             assert spiState == CONNECTING || spiState == DISCONNECTED;
 
             spiState = CONNECTING;
+
+            debugLog(null, "spiState=" + spiState);
         }
 
         SecurityCredentials locCred = (SecurityCredentials)locNode.getAttributes()
@@ -831,6 +839,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                     topHist.clear();
 
                     spiState = CONNECTED;
+
+                    debugLog(null, "spiState=" + spiState);
 
                     mux.notifyAll();
                 }
@@ -3119,7 +3129,7 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                 nodeAddedMsg.client(msg.client());
 
-                debugLog(nodeAddedMsg, "Process join, internalOrder=" + node.internalOrder() + ", msg=" + nodeAddedMsg);
+                debugLog(nodeAddedMsg, "Coordinator process join, internalOrder=" + node.internalOrder() + ", msg=" + nodeAddedMsg);
 
                 processNodeAddedMessage(nodeAddedMsg);
 
@@ -3343,10 +3353,18 @@ class ServerImpl extends TcpDiscoveryImpl {
                                   "coordinator for final processing [ring=" + ring + ", node=" + node + ", locNode="
                                   + locNode + ", msg=" + msg + ']');
 
-                if (debugMode)
-                    debugLog(msg, "Local node already has node being added. Passing TcpDiscoveryNodeAddedMessage to " +
-                                 "coordinator for final processing [ring=" + ring + ", node=" + node + ", locNode="
-                                 + locNode + ", msg=" + msg + ']');
+                if (debugMode) {
+                    synchronized (mux) {
+                        debugLog(msg, "Local node already has node being added. Passing TcpDiscoveryNodeAddedMessage to " +
+                            "coordinator for final processing [ring=" + ring +
+                            ", node=" + node +
+                            ", locNode=" + locNode +
+                            ", msg=" + msg +
+                            ", leaving=" + leavingNodes +
+                            ", failed=" + failedNodes +
+                            ']');
+                    }
+                }
 
                 return;
             }
@@ -3573,9 +3591,9 @@ class ServerImpl extends TcpDiscoveryImpl {
                     return;
                 }
                 else {
-                    debugLog(msg, "Coordinator incremented topVer=" + ring.topologyVersion() + " " + msg);
-
                     msg.topologyVersion(ring.incrementTopologyVersion());
+
+                    debugLog(msg, "Coordinator incremented topVer=" + ring.topologyVersion() + " " + msg);
                 }
 
                 msg.verify(locNodeId);
@@ -3657,6 +3675,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                     spiState = CONNECTED;
 
                     mux.notifyAll();
+
+                    debugLog(msg, "spiState=" + spiState);
                 }
 
                 // Discovery manager must create local joined event before spiStart completes.
@@ -3689,6 +3709,8 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                         spiState = STOPPING;
 
+                        debugLog(msg, "spiState=" + spiState);
+
                         mux.notifyAll();
                     }
                 }
@@ -3708,6 +3730,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                             spiState = LEFT;
 
                             mux.notifyAll();
+
+                            debugLog(msg, "spiState=" + spiState);
                         }
                     }
 
@@ -3731,6 +3755,8 @@ class ServerImpl extends TcpDiscoveryImpl {
             if (leavingNode != null) {
                 synchronized (mux) {
                     leavingNodes.add(leavingNode);
+
+                    debugLog(msg, "Add leaving " + leavingNode);
                 }
             }
             else {
@@ -3832,6 +3858,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                     failedNodes.remove(leftNode);
 
                     leavingNodes.remove(leftNode);
+
+                    debugLog(msg, "Remove leaving " + leavingNode);
                 }
             }
 
@@ -3982,6 +4010,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                     failedNodes.remove(node);
 
                     leavingNodes.remove(node);
+
+                    debugLog(msg, "Remove leaving " + node);
 
                     ClientMessageWorker worker = clientMsgWorkers.remove(node.id());
 
