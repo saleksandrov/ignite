@@ -40,6 +40,8 @@ import org.apache.ignite.spi.discovery.tcp.internal.TcpDiscoveryNode;
 import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryAbstractMessage;
 import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryCustomEventMessage;
 import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryDiscardMessage;
+import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryHeartbeatMessage;
+import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryStatusCheckMessage;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -107,7 +109,8 @@ abstract class TcpDiscoveryImpl {
     protected void debugLog(TcpDiscoveryAbstractMessage discoMsg, String msg) {
         assert debugMode;
 
-        if ((discoMsg instanceof TcpDiscoveryCustomEventMessage) || (discoMsg instanceof TcpDiscoveryDiscardMessage))
+        if ((discoMsg instanceof TcpDiscoveryCustomEventMessage) || (discoMsg instanceof TcpDiscoveryDiscardMessage)
+            || (discoMsg instanceof TcpDiscoveryStatusCheckMessage) || (discoMsg instanceof TcpDiscoveryHeartbeatMessage))
             return;
 
         String msg0 = new SimpleDateFormat("[HH:mm:ss,SSS]").format(new Date(System.currentTimeMillis())) +
