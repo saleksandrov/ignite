@@ -209,14 +209,14 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
     /**
      * @throws Exception If any error occurs.
      */
-    public void testMultiThreadedClientsServersRestart() throws Throwable {
+    public void _testMultiThreadedClientsServersRestart() throws Throwable {
         multiThreadedClientsServersRestart(GRID_CNT, CLIENT_GRID_CNT);
     }
 
     /**
      * @throws Exception If any error occurs.
      */
-    public void _testMultiThreadedServersRestart() throws Throwable {
+    public void testMultiThreadedServersRestart() throws Throwable {
         multiThreadedClientsServersRestart(GRID_CNT * 2, 0);
     }
 
