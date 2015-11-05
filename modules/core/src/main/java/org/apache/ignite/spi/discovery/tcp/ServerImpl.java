@@ -2200,7 +2200,7 @@ class ServerImpl extends TcpDiscoveryImpl {
                 e.printStackTrace();
 
                 synchronized (System.out) {
-                    System.out.println("Error: " + e + " " + Thread.currentThread().getName());
+                    System.out.println("Error: " + e + " " + Thread.currentThread().getName() + ", msg=" + msg);
 
                     debugLog(msg, "Error: " + e);
 
@@ -3322,7 +3322,7 @@ class ServerImpl extends TcpDiscoveryImpl {
                     TcpDiscoveryNodeAddFinishedMessage addFinishMsg = new TcpDiscoveryNodeAddFinishedMessage(locNodeId,
                         node.id());
 
-                    debugLog(addFinishMsg, "Created finish message: " + addFinishMsg);
+                    debugLog(addFinishMsg, "Created finish message: " + addFinishMsg + ", ring=" + ring + ']');
 
                     if (node.isClient()) {
                         addFinishMsg.clientDiscoData(msg.oldNodesDiscoveryData());
@@ -3563,6 +3563,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                 if (log.isDebugEnabled())
                     log.debug("Discarding node add finished message since node is not found " +
                         "[msg=" + msg + ']');
+
+                debugLog(msg, "Discarding node add finished message " + msg + ", ring=" + ring + ']');
 
                 return;
             }
