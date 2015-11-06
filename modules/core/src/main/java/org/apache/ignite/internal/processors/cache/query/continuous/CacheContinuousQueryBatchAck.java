@@ -128,8 +128,8 @@ public class CacheContinuousQueryBatchAck extends GridCacheMessage {
                 reader.incrementState();
 
             case 4:
-                updateCntrs = reader.readMap("updateCntrs", MessageCollectionItemType.INT, MessageCollectionItemType.LONG,
-                    false);
+                updateCntrs = reader.readMap("updateCntrs", MessageCollectionItemType.INT,
+                    MessageCollectionItemType.LONG, false);
 
                 if (!reader.isLastRead())
                     return false;
@@ -138,7 +138,7 @@ public class CacheContinuousQueryBatchAck extends GridCacheMessage {
 
         }
 
-        return true;
+        return reader.afterMessageRead(CacheContinuousQueryBatchAck.class);
     }
 
     /** {@inheritDoc} */
