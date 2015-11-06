@@ -744,6 +744,8 @@ public class GridDhtPartitionsExchangeFuture extends GridFutureAdapter<AffinityT
                     // Must initialize topology after we get discovery event.
                     initTopology(cacheCtx);
 
+                    cacheCtx.preloader().onTopologyChanged(exchId.topologyVersion());
+
                     cacheCtx.preloader().updateLastExchangeFuture(this);
                 }
 
@@ -1465,6 +1467,12 @@ public class GridDhtPartitionsExchangeFuture extends GridFutureAdapter<AffinityT
                                         log.debug("Reassigned oldest node [this=" + cctx.localNodeId() +
                                             ", old=" + oldest.id() + ", new=" + newOldest.id() + ']');
                                 }
+                            }
+                            else {
+                                ClusterTopologyCheckedException err = new ClusterTopologyCheckedException("Failed to " +
+                                    "wait for exchange future, all server nodes left.");
+
+                                onDone(err);
                             }
 
                             if (set) {
