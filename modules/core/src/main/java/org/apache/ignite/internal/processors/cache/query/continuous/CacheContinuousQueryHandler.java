@@ -768,7 +768,7 @@ class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
                             if (e.getValue() != HOLE && !e.getValue().isFiltered())
                                 entries.add(e.getValue());
 
-
+                            iter.remove();
                         }
                         else
                             break;
