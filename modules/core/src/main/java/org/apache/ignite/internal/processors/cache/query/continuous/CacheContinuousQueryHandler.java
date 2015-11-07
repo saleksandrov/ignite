@@ -134,7 +134,7 @@ class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
     private transient ConcurrentMap<Integer, PartitionRecovery> rcvs;
 
     /** */
-    private transient ConcurrentMap<Integer, HoleBuffer> snds = new ConcurrentHashMap<>();
+    private transient ConcurrentMap<Integer, EntryBuffer> snds = new ConcurrentHashMap<>();
 
     /** */
     private transient AcknowledgeBuffer ackBuf;
@@ -592,7 +592,7 @@ class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
         PartitionRecovery rec = rcvs.get(e.partition());
 
         if (rec == null) {
-            rec = new PartitionRecovery(ctx.log(getClass()), cacheContext(ctx),
+            rec = new PartitionRecovery(ctx.log(getClass()), cacheContext(ctx).topology().topologyVersion(),
                 initUpdCntrs == null ? null : initUpdCntrs.get(e.partition()));
 
             PartitionRecovery oldRec = rcvs.putIfAbsent(e.partition(), rec);
@@ -624,12 +624,12 @@ class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
         if (e.updateCounter() == -1)
             return e;
 
-        HoleBuffer buf = snds.get(e.partition());
+        EntryBuffer buf = snds.get(e.partition());
 
         if (buf == null) {
-            buf = new HoleBuffer();
+            buf = new EntryBuffer();
 
-            HoleBuffer oldRec = snds.putIfAbsent(e.partition(), buf);
+            EntryBuffer oldRec = snds.putIfAbsent(e.partition(), buf);
 
             if (oldRec != null)
                 buf = oldRec;
@@ -646,10 +646,10 @@ class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
         private static final CacheContinuousQueryEntry HOLE = new CacheContinuousQueryEntry();
 
         /** */
-        private IgniteLogger log;
+        private final static int MAX_BUFF_SIZE = 100;
 
         /** */
-        private GridCacheContext cctx;
+        private IgniteLogger log;
 
         /** */
         private long lastFiredEvt;
@@ -662,17 +662,16 @@ class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
 
         /**
          * @param log Logger.
-         * @param cctx Cache context.
+         * @param topVer Topology version.
          * @param initCntr Update counters.
          */
-        public PartitionRecovery(IgniteLogger log, GridCacheContext cctx, @Nullable Long initCntr) {
+        public PartitionRecovery(IgniteLogger log, AffinityTopologyVersion topVer, @Nullable Long initCntr) {
             this.log = log;
-            this.cctx = cctx;
 
             if (initCntr != null) {
                 this.lastFiredEvt = initCntr;
 
-                curTop = cctx.topology().topologyVersion();
+                curTop = topVer;
             }
         }
 
@@ -746,20 +745,34 @@ class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
 
                 entries = new ArrayList<>();
 
-                // Elements are consistently.
-                while (iter.hasNext()) {
-                    Map.Entry<Long, CacheContinuousQueryEntry> e = iter.next();
-
-                    if (e.getKey() == lastFiredEvt + 1) {
-                        ++lastFiredEvt;
+                if (pendingEvts.size() >= MAX_BUFF_SIZE) {
+                    for (int i = 0; i < MAX_BUFF_SIZE - (MAX_BUFF_SIZE / 10); i++) {
+                        Map.Entry<Long, CacheContinuousQueryEntry> e = iter.next();
 
                         if (e.getValue() != HOLE && !e.getValue().isFiltered())
                             entries.add(e.getValue());
 
+                        lastFiredEvt = e.getKey();
+
                         iter.remove();
                     }
-                    else
-                        break;
+                }
+                else {
+                    // Elements are consistently.
+                    while (iter.hasNext()) {
+                        Map.Entry<Long, CacheContinuousQueryEntry> e = iter.next();
+
+                        if (e.getKey() == lastFiredEvt + 1) {
+                            ++lastFiredEvt;
+
+                            if (e.getValue() != HOLE && !e.getValue().isFiltered())
+                                entries.add(e.getValue());
+
+
+                        }
+                        else
+                            break;
+                    }
                 }
             }
 
@@ -770,9 +783,12 @@ class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
     /**
      *
      */
-    private static class HoleBuffer {
+    private static class EntryBuffer {
         /** */
-        private final NavigableSet<Long> buf = new GridConcurrentSkipListSet<>();
+        private final static int MAX_BUFF_SIZE = 100;
+
+        /** */
+        private final GridConcurrentSkipListSet<Long> buf = new GridConcurrentSkipListSet<>();
 
         /** */
         private AtomicLong lastFiredCntr = new AtomicLong();
@@ -803,7 +819,38 @@ class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
         public CacheContinuousQueryEntry handle(CacheContinuousQueryEntry e) {
             assert e != null;
 
+            if (!e.isBackup()) {
+                int z = 0;
+
+                ++z;
+            }
+
             if (e.isFiltered()) {
+                Long last = buf.lastx();
+                Long first = buf.firstx();
+
+                if (last != null && first != null && last - first >= MAX_BUFF_SIZE) {
+                    NavigableSet<Long> prevHoles = buf.subSet(first, true, last, true);
+
+                    GridLongList filteredEvts = new GridLongList((int)(last - first));
+
+                    int size = 0;
+
+                    Long cntr;
+
+                    while ((cntr = prevHoles.pollFirst()) != null) {
+                        filteredEvts.add(cntr);
+
+                        ++size;
+                    }
+
+                    filteredEvts.truncate(size, true);
+
+                    e.filteredEvents(filteredEvts);
+
+                    return e;
+                }
+
                 if (lastFiredCntr.get() > e.updateCounter() || e.updateCounter() == 1)
                     return e;
                 else {
@@ -827,18 +874,14 @@ class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
                 else {
                     NavigableSet<Long> prevHoles = buf.subSet(prevVal, true, e.updateCounter(), true);
 
-                    GridLongList filteredEvts = new GridLongList(10);
+                    GridLongList filteredEvts = new GridLongList((int)(e.updateCounter() - prevVal));
 
                     int size = 0;
 
-                    Iterator<Long> iter = prevHoles.iterator();
+                    Long cntr;
 
-                    while (iter.hasNext()) {
-                        long cntr = iter.next();
-
+                    while ((cntr = prevHoles.pollFirst()) != null) {
                         filteredEvts.add(cntr);
-
-                        iter.remove();
 
                         ++size;
                     }

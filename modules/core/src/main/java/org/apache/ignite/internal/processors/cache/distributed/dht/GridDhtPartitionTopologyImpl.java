@@ -861,6 +861,22 @@ class GridDhtPartitionTopologyImpl implements GridDhtPartitionTopology {
             if (stopping)
                 return null;
 
+            if (cntrMap != null) {
+                for (Map.Entry<Integer, Long> e : cntrMap.entrySet()) {
+                    Long cntr = this.cntrMap.get(e.getKey());
+
+                    if (cntr == null || cntr < e.getValue())
+                        this.cntrMap.put(e.getKey(), e.getValue());
+                }
+
+                for (GridDhtLocalPartition part : locParts.values()) {
+                    Long cntr = cntrMap.get(part.id());
+
+                    if (cntr != null)
+                        part.updateCounter(cntr);
+                }
+            }
+
             if (exchId != null && lastExchangeId != null && lastExchangeId.compareTo(exchId) >= 0) {
                 if (log.isDebugEnabled())
                     log.debug("Stale exchange id for full partition map update (will ignore) [lastExchId=" +
@@ -929,22 +945,6 @@ class GridDhtPartitionTopologyImpl implements GridDhtPartitionTopology {
 
             part2node = p2n;
 
-            if (cntrMap != null) {
-                for (Map.Entry<Integer, Long> e : cntrMap.entrySet()) {
-                    Long cntr = this.cntrMap.get(e.getKey());
-
-                    if (cntr == null || cntr < e.getValue())
-                        this.cntrMap.put(e.getKey(), e.getValue());
-                }
-
-                for (GridDhtLocalPartition part : locParts.values()) {
-                    Long cntr = cntrMap.get(part.id());
-
-                    if (cntr != null)
-                        part.updateCounter(cntr);
-                }
-            }
-
             boolean changed = checkEvictions(updateSeq);
 
             updateRebalanceVersion();
@@ -981,6 +981,22 @@ class GridDhtPartitionTopologyImpl implements GridDhtPartitionTopology {
         try {
             if (stopping)
                 return null;
+
+            if (cntrMap != null) {
+                for (Map.Entry<Integer, Long> e : cntrMap.entrySet()) {
+                    Long cntr = this.cntrMap.get(e.getKey());
+
+                    if (cntr == null || cntr < e.getValue())
+                        this.cntrMap.put(e.getKey(), e.getValue());
+                }
+
+                for (GridDhtLocalPartition part : locParts.values()) {
+                    Long cntr = cntrMap.get(part.id());
+
+                    if (cntr != null)
+                        part.updateCounter(cntr);
+                }
+            }
 
             if (lastExchangeId != null && exchId != null && lastExchangeId.compareTo(exchId) > 0) {
                 if (log.isDebugEnabled())
@@ -1039,22 +1055,6 @@ class GridDhtPartitionTopologyImpl implements GridDhtPartitionTopology {
 
                     if (ids != null)
                         changed |= ids.remove(parts.nodeId());
-                }
-            }
-
-            if (cntrMap != null) {
-                for (Map.Entry<Integer, Long> e : cntrMap.entrySet()) {
-                    Long cntr = this.cntrMap.get(e.getKey());
-
-                    if (cntr == null || cntr < e.getValue())
-                        this.cntrMap.put(e.getKey(), e.getValue());
-                }
-
-                for (GridDhtLocalPartition part : locParts.values()) {
-                    Long cntr = cntrMap.get(part.id());
-
-                    if (cntr != null)
-                        part.updateCounter(cntr);
                 }
             }
 
