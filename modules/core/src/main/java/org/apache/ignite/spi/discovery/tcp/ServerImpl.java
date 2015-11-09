@@ -1786,8 +1786,6 @@ class ServerImpl extends TcpDiscoveryImpl {
                     if (add)
                         debugLog(null, "New failed node [node=" + failedNode + ", msg=" + msg + ']');
                 }
-                else
-                    debugLog(null, "Unknown failed node [nodeId=" + nodeId + ", msg=" + msg + ']');
             }
         }
     }
