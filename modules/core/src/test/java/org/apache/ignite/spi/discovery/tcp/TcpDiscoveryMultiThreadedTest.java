@@ -113,10 +113,12 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
         if (client())
             cfg.setClientMode(true);
 
+        cfg.setFailureDetectionTimeout(30_000);
+
         cfg.setDiscoverySpi(new TcpDiscoverySpi().
             setIpFinder(ipFinder).
             setJoinTimeout(60_000).
-            setNetworkTimeout(10_000));
+            setNetworkTimeout(30_000));
 
         int[] evts = {EVT_NODE_FAILED, EVT_NODE_LEFT};
 

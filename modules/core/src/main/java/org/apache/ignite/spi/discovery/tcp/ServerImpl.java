@@ -48,7 +48,6 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.BlockingDeque;
-import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -2151,7 +2150,7 @@ class ServerImpl extends TcpDiscoveryImpl {
                     log.debug("Processing message [cls=" + msg.getClass().getSimpleName() + ", id=" + msg.id() + ']');
 
                 if (debugMode)
-                    debugLog(msg, "Processing message [cls=" + msg.getClass().getSimpleName() + ", id=" + msg.id() + ']');
+                    debugLog(msg, "Processing message [msg=" + msg + ", id=" + msg.id() + ']');
 
                 spi.stats.onMessageProcessingStarted(msg);
 
@@ -2554,7 +2553,7 @@ class ServerImpl extends TcpDiscoveryImpl {
                                             ", res=" + res + ']');
 
                                     if (debugMode)
-                                        debugLog(pendingMsg, "Pending message has been sent to next node [msgId=" + msg.id() +
+                                        debugLog(pendingMsg, "Pending message has been sent to next node [msg=" + msg +
                                             ", pendingMsgId=" + pendingMsg.id() + ", next=" + next.id() +
                                             ", res=" + res + ']');
 
@@ -5655,6 +5654,10 @@ class ServerImpl extends TcpDiscoveryImpl {
 
             if (log.isDebugEnabled())
                 log.debug("Message has been added to queue: " + msg);
+        }
+
+        void addFirst(TcpDiscoveryAbstractMessage msg) {
+            queue.addFirst(msg);
         }
 
         /**
