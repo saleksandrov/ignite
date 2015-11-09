@@ -332,8 +332,21 @@ public class GridDhtAtomicUpdateFuture extends GridFutureAdapter<Void>
             cctx.mvcc().removeAtomicFuture(version());
 
             if (err != null) {
-                for (KeyCacheObject key : keys)
+                int i = 0;
+
+                for (KeyCacheObject key : keys) {
                     updateRes.addFailedKey(key, err);
+
+                    if (i < updates.size()) {
+
+                        T4<GridDhtCacheEntry, CacheObject, CacheObject, Long> upd = updates.get(i);
+
+                        cctx.continuousQueries().skipUpdateEvent(key, upd.get1().partition(), upd.get4(),
+                            updateReq.topologyVersion());
+
+                        ++i;
+                    }
+                }
             }
             else {
                 assert keys.size() >= updates.size();
@@ -348,7 +361,7 @@ public class GridDhtAtomicUpdateFuture extends GridFutureAdapter<Void>
 
                     try {
                         cctx.continuousQueries().onEntryUpdated(upd.get1(), key, upd.get2(), upd.get3(), true, false,
-                            upd.get4(), updateRes.topologyVersion());
+                            upd.get4(), updateReq.topologyVersion());
                     }
                     catch (IgniteCheckedException e) {
                         U.warn(log, "Failed to send continuous query message. [key=" + key + ", newVal="

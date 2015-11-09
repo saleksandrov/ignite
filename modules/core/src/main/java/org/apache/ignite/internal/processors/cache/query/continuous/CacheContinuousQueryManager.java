@@ -158,6 +158,31 @@ public class CacheContinuousQueryManager extends GridCacheManagerAdapter {
     }
 
     /**
+     * @param partId Partition id.
+     * @param updCntr Updated counter.
+     * @param topVer Topology version.
+     */
+    public void skipUpdateEvent(KeyCacheObject key, int partId, long updCntr, AffinityTopologyVersion topVer) {
+        if (lsnrCnt.get() > 0) {
+            CacheContinuousQueryEntry e0 = new CacheContinuousQueryEntry(
+                cctx.cacheId(),
+                UPDATED,
+                key,
+                null,
+                null,
+                partId,
+                updCntr,
+                topVer);
+
+            CacheContinuousQueryEvent evt = new CacheContinuousQueryEvent<>(
+                    cctx.kernalContext().cache().jcache(cctx.name()), cctx, e0);
+
+            for (CacheContinuousQueryListener lsnr : lsnrs.values())
+                lsnr.skipUpdateEvent(evt, topVer);
+        }
+    }
+
+    /**
      * @param e Cache entry.
      * @param key Key.
      * @param newVal New value.

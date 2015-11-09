@@ -248,7 +248,7 @@ class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
 
         assert !skipPrimaryCheck || loc;
 
-        GridCacheContext<K, V> cctx = cacheContext(ctx);
+        final GridCacheContext<K, V> cctx = cacheContext(ctx);
 
         if (!internal && cctx != null && initUpdCntrs != null) {
             Map<Integer, Long> map = cctx.topology().updateCounters();
@@ -438,6 +438,40 @@ class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
 
             @Override public void acknowledgeBackupOnTimeout(GridKernalContext ctx) {
                 sendBackupAcknowledge(ackBuf.acknowledgeOnTimeout(), routineId, ctx);
+            }
+
+            @Override public void skipUpdateEvent(CacheContinuousQueryEvent<K, V> evt, AffinityTopologyVersion topVer) {
+                try {
+                    assert evt != null;
+
+                    CacheContinuousQueryEntry e = evt.entry();
+
+                    EntryBuffer buf = snds.get(e.partition());
+
+                    if (buf == null) {
+                        buf = new EntryBuffer();
+
+                        EntryBuffer oldRec = snds.putIfAbsent(e.partition(), buf);
+
+                        if (oldRec != null)
+                            buf = oldRec;
+                    }
+
+                    e = buf.skipEntry(e, topVer);
+
+                    if (e != null)
+                        ctx.continuous().addNotification(nodeId, routineId, e, topic, sync, true);
+                }
+                catch (ClusterTopologyCheckedException ex) {
+                    IgniteLogger log = ctx.log(getClass());
+
+                    if (log.isDebugEnabled())
+                        log.debug("Failed to send event notification to node, node left cluster " +
+                                "[node=" + nodeId + ", err=" + ex + ']');
+                }
+                catch (IgniteCheckedException ex) {
+                    U.error(ctx.log(getClass()), "Failed to send event notification to node: " + nodeId, ex);
+                }
             }
 
             @Override public void onPartitionEvicted(int part) {
@@ -811,6 +845,34 @@ class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
         }
 
         /**
+         * @param e Entry.
+         * @param topVer Topology version.
+         * @return Continuous query entry.
+         */
+        private CacheContinuousQueryEntry skipEntry(CacheContinuousQueryEntry e, AffinityTopologyVersion topVer) {
+            if (lastFiredCntr.get() > e.updateCounter() || e.updateCounter() == 1) {
+
+                e.markFiltered();
+
+                return e;
+            }
+            else {
+                buf.add(e.updateCounter());
+
+                // Double check. If another thread sent a event with counter higher than this event.
+                if (lastFiredCntr.get() > e.updateCounter() && buf.contains(e.updateCounter())) {
+                    buf.remove(e.updateCounter());
+
+                    e.markFiltered();
+
+                    return e;
+                }
+                else
+                    return null;
+            }
+        }
+
+        /**
          * Add continuous entry.
          *
          * @param e Cache continuous query entry.
@@ -818,12 +880,6 @@ class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
          */
         public CacheContinuousQueryEntry handle(CacheContinuousQueryEntry e) {
             assert e != null;
-
-            if (!e.isBackup()) {
-                int z = 0;
-
-                ++z;
-            }
 
             if (e.isFiltered()) {
                 Long last = buf.lastx();

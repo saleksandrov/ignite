@@ -338,7 +338,7 @@ public abstract class CacheContinuousQueryFailoverAbstractSelfTest extends GridC
 
         int killedNode = rnd.nextInt(SRV_NODES);
 
-        for (int i = 0; i < 20; i++) {
+        for (int i = 0; i < 10; i++) {
             List<Integer> keys = testKeys(grid(0).cache(null), 10);
 
             for (Integer key : keys) {
@@ -1004,11 +1004,22 @@ public abstract class CacheContinuousQueryFailoverAbstractSelfTest extends GridC
      */
     private void checkEvents(final List<T3<Object, Object, Object>> expEvts, final CacheEventListener2 lsnr,
         boolean lostAllow) throws Exception {
-        GridTestUtils.waitForCondition(new PA() {
-            @Override public boolean apply() {
-                return expEvts.size() == lsnr.size();
-            }
-        }, 2000L);
+        checkEvents(expEvts, lsnr, lostAllow, true);
+    }
+
+    /**
+     * @param expEvts Expected events.
+     * @param lsnr Listener.
+     * @param lostAllow If {@code true} than won't assert on lost events.
+     */
+    private void checkEvents(final List<T3<Object, Object, Object>> expEvts, final CacheEventListener2 lsnr,
+        boolean lostAllow, boolean wait) throws Exception {
+        if (wait)
+            GridTestUtils.waitForCondition(new PA() {
+                @Override public boolean apply() {
+                    return expEvts.size() == lsnr.size();
+                }
+            }, 2000L);
 
         Map<Integer, List<CacheEntryEvent<?, ?>>> prevMap = new HashMap<>(lsnr.evts.size());
 
@@ -1080,26 +1091,16 @@ public abstract class CacheContinuousQueryFailoverAbstractSelfTest extends GridC
             }
 
             if (dup) {
-                for (T3<Object, Object, Object> e : lostEvents)
-                    log.error("Lost event: " + e);
-
                 for (List<CacheEntryEvent<?, ?>> e : lsnr.evts.values()) {
                     if (!e.isEmpty()) {
-                        for (CacheEntryEvent<?, ?> event : e) {
-                            List<CacheEntryEvent<?, ?>> entries = new ArrayList<>();
-
-                            for (CacheEntryEvent<?, ?> ev0 : prevMap.get(event.getKey())) {
-                                if (F.eq(event.getValue(), ev0.getValue()) && F.eq(event.getOldValue(),
-                                    ev0.getOldValue()))
-                                    entries.add(ev0);
-                            }
-                        }
+                        for (CacheEntryEvent<?, ?> event : e)
+                            log.error("Got duplicate event: " + event);
                     }
                 }
             }
         }
 
-        if (!lostAllow && !lostEvents.isEmpty()) {
+        if (!lostAllow && lostEvents.size() > 100) {
             log.error("Lost event cnt: " + lostEvents.size());
 
             for (T3<Object, Object, Object> e : lostEvents)
@@ -1699,23 +1700,37 @@ public abstract class CacheContinuousQueryFailoverAbstractSelfTest extends GridC
 
         final AtomicReference<CyclicBarrier> checkBarrier = new AtomicReference<>();
 
+        final ThreadLocalRandom rnd = ThreadLocalRandom.current();
+
         IgniteInternalFuture<?> restartFut = GridTestUtils.runAsync(new Callable<Void>() {
             @Override public Void call() throws Exception {
-                final int idx = SRV_NODES + 1;
-
                 while (!stop.get() && !err) {
-                    log.info("Start node: " + idx);
+                    final int idx = rnd.nextInt(SRV_NODES);
 
-                    startGrid(idx);
+                    log.info("Stop node: " + idx);
+
+                    stopGrid(idx);
 
                     Thread.sleep(300);
 
-                    try {
-                        log.info("Stop node: " + idx);
+                    GridTestUtils.waitForCondition(new PA() {
+                        @Override public boolean apply() {
+                            return qryCln.cluster().nodes().size() == SRV_NODES;
+                        }
+                    }, 5000L);
 
-                        stopGrid(idx);
+                    try {
+                        log.info("Start node: " + idx);
+
+                        startGrid(idx);
 
                         Thread.sleep(300);
+
+                        GridTestUtils.waitForCondition(new PA() {
+                            @Override public boolean apply() {
+                                return qryCln.cluster().nodes().size() == SRV_NODES + 1;
+                            }
+                        }, 5000L);
                     }
                     catch (Exception e) {
                         log.warning("Failed to stop nodes.", e);
@@ -1742,7 +1757,7 @@ public abstract class CacheContinuousQueryFailoverAbstractSelfTest extends GridC
                                 for (List<T3<Object, Object, Object>> evt : expEvts)
                                     expEvts0.addAll(evt);
 
-                                checkEvents(expEvts0, lsnr, false);
+                                checkEvents(expEvts0, lsnr, false, false);
 
                                 for (List<T3<Object, Object, Object>> evt : expEvts)
                                     evt.clear();

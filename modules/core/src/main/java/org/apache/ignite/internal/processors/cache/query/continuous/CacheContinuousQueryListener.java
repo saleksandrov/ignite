@@ -66,6 +66,12 @@ interface CacheContinuousQueryListener<K, V> {
     public void acknowledgeBackupOnTimeout(GridKernalContext ctx);
 
     /**
+     * @param evt Event
+     * @param topVer Topology version.
+     */
+    public void skipUpdateEvent(CacheContinuousQueryEvent<K, V> evt, AffinityTopologyVersion topVer);
+
+    /**
      * @param part Partition.
      */
     public void onPartitionEvicted(int part);
