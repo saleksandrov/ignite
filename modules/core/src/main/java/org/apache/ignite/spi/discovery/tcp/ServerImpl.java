@@ -1918,10 +1918,14 @@ class ServerImpl extends TcpDiscoveryImpl {
          * @param msg Message to add.
          */
         void add(TcpDiscoveryAbstractMessage msg) {
+            debugLog(msg, "add pending: " + msg);
+
             msgs.add(msg);
 
             while (msgs.size() > MAX) {
                 TcpDiscoveryAbstractMessage polled = msgs.poll();
+
+                debugLog(polled, "polled: " + polled);
 
                 assert polled != null;
 
@@ -1941,13 +1945,20 @@ class ServerImpl extends TcpDiscoveryImpl {
             @Nullable IgniteUuid discardId,
             @Nullable IgniteUuid customDiscardId
         ) {
-//            this.msgs.clear();
-//
-            if (msgs != null)
+            for (TcpDiscoveryAbstractMessage msg : this.msgs)
+                debugLog(msg, "reset pending: " + msg);
+
+            this.msgs.clear();
+
+            if (msgs != null) {
+                for (TcpDiscoveryAbstractMessage msg : msgs)
+                    debugLog(msg, "reset add pending: " + msg);
+
                 this.msgs.addAll(msgs);
-//
-//            this.discardId = discardId;
-//            this.customDiscardId = customDiscardId;
+            }
+
+            this.discardId = discardId;
+            this.customDiscardId = customDiscardId;
         }
 
         /**
