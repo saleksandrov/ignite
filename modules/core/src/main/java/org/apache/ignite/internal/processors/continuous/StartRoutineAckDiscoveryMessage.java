@@ -58,7 +58,7 @@ public class StartRoutineAckDiscoveryMessage extends AbstractContinuousMessage {
     /**
      * @return Update counters for partitions.
      */
-    public Map<Integer, Long> updateCntrs() {
+    public Map<Integer, Long> updateCounters() {
         return updateCntrs;
     }
 

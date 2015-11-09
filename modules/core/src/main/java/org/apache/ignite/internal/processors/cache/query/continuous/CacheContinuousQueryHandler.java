@@ -134,7 +134,7 @@ class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
     private transient ConcurrentMap<Integer, PartitionRecovery> rcvs;
 
     /** */
-    private transient ConcurrentMap<Integer, EntryBuffer> snds = new ConcurrentHashMap<>();
+    private transient ConcurrentMap<Integer, EntryBuffer> entryBufs;
 
     /** */
     private transient AcknowledgeBuffer ackBuf;
@@ -237,6 +237,8 @@ class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
 
         if (rmtFilter != null)
             ctx.resource().injectGeneric(rmtFilter);
+
+        entryBufs = new ConcurrentHashMap<>();
 
         backupQueue = new ConcurrentLinkedDeque8<>();
 
@@ -446,12 +448,12 @@ class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
 
                     CacheContinuousQueryEntry e = evt.entry();
 
-                    EntryBuffer buf = snds.get(e.partition());
+                    EntryBuffer buf = entryBufs.get(e.partition());
 
                     if (buf == null) {
                         buf = new EntryBuffer();
 
-                        EntryBuffer oldRec = snds.putIfAbsent(e.partition(), buf);
+                        EntryBuffer oldRec = entryBufs.putIfAbsent(e.partition(), buf);
 
                         if (oldRec != null)
                             buf = oldRec;
@@ -644,7 +646,7 @@ class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
      */
     private CacheContinuousQueryEntry handleEntry(CacheContinuousQueryEntry e) {
         assert e != null;
-        assert snds != null;
+        assert entryBufs != null;
 
         if (internal) {
             if (e.isFiltered())
@@ -658,12 +660,12 @@ class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
         if (e.updateCounter() == -1)
             return e;
 
-        EntryBuffer buf = snds.get(e.partition());
+        EntryBuffer buf = entryBufs.get(e.partition());
 
         if (buf == null) {
             buf = new EntryBuffer();
 
-            EntryBuffer oldRec = snds.putIfAbsent(e.partition(), buf);
+            EntryBuffer oldRec = entryBufs.putIfAbsent(e.partition(), buf);
 
             if (oldRec != null)
                 buf = oldRec;

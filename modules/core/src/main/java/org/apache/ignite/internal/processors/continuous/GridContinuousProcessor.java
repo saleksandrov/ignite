@@ -212,7 +212,7 @@ public class GridContinuousProcessor extends GridProcessorAdapter {
 
                             if (routine != null) {
                                 try {
-                                    Map<Integer, Long> cntrs = msg.updateCntrs();
+                                    Map<Integer, Long> cntrs = msg.updateCounters();
 
                                     GridCacheAdapter<Object, Object> interCache =
                                         ctx.cache().internalCache(routine.handler().cacheName());
@@ -234,7 +234,7 @@ public class GridContinuousProcessor extends GridProcessorAdapter {
                                     U.warn(log, "Failed to load update counters.", e);
                                 }
 
-                                routine.handler().updateCounters(msg.updateCntrs());
+                                routine.handler().updateCounters(msg.updateCounters());
                             }
 
                             fut.onRemoteRegistered();
@@ -893,7 +893,7 @@ public class GridContinuousProcessor extends GridProcessorAdapter {
                 Map<Integer, Long> cntrs = ctx.cache().internalCache(hnd.cacheName())
                     .context().topology().updateCounters();
 
-                req.addUpdateIdxs(cntrs);
+                req.addUpdateCounters(cntrs);
             }
         }
         catch (Exception e) {

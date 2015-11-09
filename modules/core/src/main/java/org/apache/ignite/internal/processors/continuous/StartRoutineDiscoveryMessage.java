@@ -68,7 +68,7 @@ public class StartRoutineDiscoveryMessage extends AbstractContinuousMessage {
     /**
      * @param cntrs Update counters.
      */
-    public void addUpdateIdxs(Map<Integer, Long> cntrs) {
+    public void addUpdateCounters(Map<Integer, Long> cntrs) {
         if (updateCntrs == null)
             updateCntrs = new HashMap<>();
 
