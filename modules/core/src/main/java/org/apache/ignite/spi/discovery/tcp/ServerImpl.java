@@ -2159,7 +2159,11 @@ class ServerImpl extends TcpDiscoveryImpl {
                         TcpDiscoveryNode failedNode = ring.node(nodeId);
 
                         if (failedNode != null) {
-                            boolean add = failedNodes.add(failedNode);
+                            boolean add;
+
+                            synchronized (mux) {
+                                add = failedNodes.add(failedNode);
+                            }
 
                             if (add)
                                 debugLog(null, "New failed node [node=" + failedNode + ", msg=" + msg + ']');
