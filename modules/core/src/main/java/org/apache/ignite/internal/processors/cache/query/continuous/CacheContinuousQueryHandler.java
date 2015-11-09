@@ -459,7 +459,7 @@ class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
                             buf = oldRec;
                     }
 
-                    e = buf.skipEntry(e, topVer);
+                    e = buf.skipEntry(e);
 
                     if (e != null)
                         ctx.continuous().addNotification(nodeId, routineId, e, topic, sync, true);
@@ -833,7 +833,7 @@ class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
          * @param newVal New value.
          * @return Old value if previous value less than new value otherwise {@code -1}.
          */
-        private long setLastFiredCounter(long newVal) {
+        private long updateFiredCounter(long newVal) {
             long prevVal = lastFiredCntr.get();
 
             while (prevVal < newVal) {
@@ -851,7 +851,7 @@ class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
          * @param topVer Topology version.
          * @return Continuous query entry.
          */
-        private CacheContinuousQueryEntry skipEntry(CacheContinuousQueryEntry e, AffinityTopologyVersion topVer) {
+        private CacheContinuousQueryEntry skipEntry(CacheContinuousQueryEntry e) {
             if (lastFiredCntr.get() > e.updateCounter() || e.updateCounter() == 1) {
 
                 e.markFiltered();
@@ -925,7 +925,7 @@ class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
                 }
             }
             else {
-                long prevVal = setLastFiredCounter(e.updateCounter());
+                long prevVal = updateFiredCounter(e.updateCounter());
 
                 if (prevVal == -1)
                     return e;
