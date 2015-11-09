@@ -21,6 +21,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -94,7 +95,7 @@ public class TcpDiscoverySelfTest extends GridCommonAbstractTest {
     private UUID nodeId;
 
     /** */
-    private TcpDiscoverySpi nodeSpi;
+    private static ThreadLocal<TcpDiscoverySpi> nodeSpi = new ThreadLocal<>();
 
     /**
      * @throws Exception If fails.
@@ -108,11 +109,14 @@ public class TcpDiscoverySelfTest extends GridCommonAbstractTest {
     @Override protected IgniteConfiguration getConfiguration(String gridName) throws Exception {
         IgniteConfiguration cfg = super.getConfiguration(gridName);
 
-        TcpDiscoverySpi spi = nodeSpi;
+        TcpDiscoverySpi spi = nodeSpi.get();
 
-        if (spi == null)
+        if (spi == null) {
             spi = gridName.contains("testPingInterruptedOnNodeFailedFailingNode") ?
                 new TestTcpDiscoverySpi() : new TcpDiscoverySpi();
+        }
+        else
+            nodeSpi.set(null);
 
         discoMap.put(gridName, spi);
 
@@ -1219,11 +1223,11 @@ public class TcpDiscoverySelfTest extends GridCommonAbstractTest {
     private void customEventRace1(final boolean cacheStartFrom1, boolean stopCrd) throws Exception {
         TestCustomEventRaceSpi spi0 = new TestCustomEventRaceSpi();
 
-        nodeSpi = spi0;
+        nodeSpi.set(spi0);
 
         final Ignite ignite0 = startGrid(0);
 
-        nodeSpi = new TestCustomEventRaceSpi();
+        nodeSpi.set(new TestCustomEventRaceSpi());
 
         final Ignite ignite1 = startGrid(1);
 
@@ -1238,7 +1242,7 @@ public class TcpDiscoverySelfTest extends GridCommonAbstractTest {
             @Override public Void call() throws Exception {
                 log.info("Start 2");
 
-                nodeSpi = new TestCustomEventRaceSpi();
+                nodeSpi.set(new TestCustomEventRaceSpi());
 
                 Ignite ignite2 = startGrid(2);
 
@@ -1288,7 +1292,7 @@ public class TcpDiscoverySelfTest extends GridCommonAbstractTest {
 
         assertEquals(1, cache.get(1));
 
-        nodeSpi = new TestCustomEventRaceSpi();
+        nodeSpi.set(new TestCustomEventRaceSpi());
 
         Ignite ignite = startGrid(3);
 
@@ -1331,15 +1335,15 @@ public class TcpDiscoverySelfTest extends GridCommonAbstractTest {
     private void customEventCoordinatorFailure(boolean twoNodes) throws Exception {
         TestCustomEventCoordinatorFailureSpi spi0 = new TestCustomEventCoordinatorFailureSpi();
 
-        nodeSpi = spi0;
+        nodeSpi.set(spi0);
 
         Ignite ignite0 = startGrid(0);
 
-        nodeSpi = new TestCustomEventCoordinatorFailureSpi();
+        nodeSpi.set(new TestCustomEventCoordinatorFailureSpi());
 
         Ignite ignite1 = startGrid(1);
 
-        nodeSpi = new TestCustomEventCoordinatorFailureSpi();
+        nodeSpi.set(new TestCustomEventCoordinatorFailureSpi());
 
         Ignite ignite2 = twoNodes ? null : startGrid(2);
 
@@ -1383,7 +1387,7 @@ public class TcpDiscoverySelfTest extends GridCommonAbstractTest {
 
         log.info("Try start one more node.");
 
-        nodeSpi = new TestCustomEventCoordinatorFailureSpi();
+        nodeSpi.set(new TestCustomEventCoordinatorFailureSpi());
 
         Ignite ignite = startGrid(twoNodes ? 2 : 3);
 
@@ -1395,6 +1399,122 @@ public class TcpDiscoverySelfTest extends GridCommonAbstractTest {
 
         assertEquals(1, cache.get(1));
         assertEquals(2, cache.get(2));
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testFailedNodes1() throws Exception {
+        try {
+            final int FAIL_ORDER = 3;
+
+            nodeSpi.set(new TestFailedNodesSpi(FAIL_ORDER));
+
+            startGrid(0);
+
+            nodeSpi.set(new TestFailedNodesSpi(FAIL_ORDER));
+
+            startGrid(1);
+
+            nodeSpi.set(new TestFailedNodesSpi(FAIL_ORDER));
+
+            startGrid(2);
+        }
+        finally {
+            stopAllGrids();
+        }
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testFailedNodes2() throws Exception {
+        try {
+            final int FAIL_ORDER = 3;
+
+            nodeSpi.set(new TestFailedNodesSpi(FAIL_ORDER));
+
+            startGrid(0);
+
+            nodeSpi.set(new TestFailedNodesSpi(FAIL_ORDER));
+
+            startGrid(1);
+
+            final AtomicInteger nodeIdx = new AtomicInteger(1);
+
+            GridTestUtils.runMultiThreaded(new Callable<Void>() {
+                @Override public Void call() throws Exception {
+                    int idx = nodeIdx.incrementAndGet();
+
+                    nodeSpi.set(new TestFailedNodesSpi(FAIL_ORDER));
+
+                    startGrid(idx);
+
+                    return null;
+                }
+            }, 3, "start-node");
+
+            Ignite ignite2 = ignite(2);
+
+            waitForRemoteNodes(ignite2, 3);
+        }
+        finally {
+            stopAllGrids();
+        }
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testFailedNodes3() throws Exception {
+        try {
+            nodeSpi.set(new TestFailedNodesSpi(-1));
+
+            startGrid(0);
+
+            nodeSpi.set(new TestFailedNodesSpi(2));
+
+            startGrid(1);
+        }
+        finally {
+            stopAllGrids();
+        }
+    }
+
+    /**
+     * Simulate scenario when node detects node failure trying to send message, but node still alive.
+     */
+    private static class TestFailedNodesSpi extends TcpDiscoverySpi {
+        /** */
+        private AtomicBoolean failMsg = new AtomicBoolean();
+
+        /** */
+        private int failOrder;
+
+        /**
+         * @param failOrder Spi fails connection if local node order equals to this order.
+         */
+        TestFailedNodesSpi(int failOrder) {
+            this.failOrder = failOrder;
+        }
+
+        /** {@inheritDoc} */
+        @Override protected void writeToSocket(Socket sock,
+            TcpDiscoveryAbstractMessage msg,
+            GridByteArrayOutputStream bout,
+            long timeout) throws IOException, IgniteCheckedException {
+            if (locNode.internalOrder() == failOrder &&
+                (msg instanceof TcpDiscoveryNodeAddedMessage) &&
+                failMsg.compareAndSet(false, true)) {
+                log.info("IO error on message send [locNode=" + locNode + ", msg=" + msg + ']');
+
+                sock.close();
+
+                throw new SocketTimeoutException();
+            }
+
+            super.writeToSocket(sock, msg, bout, timeout);
+        }
     }
 
     /**

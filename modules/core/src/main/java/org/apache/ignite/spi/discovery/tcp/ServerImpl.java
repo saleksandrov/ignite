@@ -1087,9 +1087,20 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                 openSock = true;
 
+                TcpDiscoveryHandshakeRequest req = new TcpDiscoveryHandshakeRequest(locNodeId);
+
+                if (msg instanceof TcpDiscoveryJoinRequestMessage) {
+                    synchronized (failedNodes) {
+                        for (TcpDiscoveryNode node : failedNodes) {
+                            debugLog(null, "Add failed node [node=" + node + ", msg=" + req + ']');
+
+                            req.addFailedNode(node);
+                        }
+                    }
+                }
+
                 // Handshake.
-                spi.writeToSocket(sock, new TcpDiscoveryHandshakeRequest(locNodeId), timeoutHelper.nextTimeoutChunk(
-                    spi.getSocketTimeout()));
+                spi.writeToSocket(sock, req, timeoutHelper.nextTimeoutChunk(spi.getSocketTimeout()));
 
                 TcpDiscoveryHandshakeResponse res = spi.readMessage(sock, null, timeoutHelper.nextTimeoutChunk(
                     ackTimeout0));
@@ -1760,6 +1771,27 @@ class ServerImpl extends TcpDiscoveryImpl {
         }
     }
 
+    private void processMessageFailedNodes(TcpDiscoveryAbstractMessage msg) {
+        if (msg.failedNodes() != null) {
+            for (UUID nodeId : msg.failedNodes()) {
+                TcpDiscoveryNode failedNode = ring.node(nodeId);
+
+                if (failedNode != null) {
+                    boolean add;
+
+                    synchronized (mux) {
+                        add = failedNodes.add(failedNode);
+                    }
+
+                    if (add)
+                        debugLog(null, "New failed node [node=" + failedNode + ", msg=" + msg + ']');
+                }
+                else
+                    debugLog(null, "Unknown failed node [nodeId=" + nodeId + ", msg=" + msg + ']');
+            }
+        }
+    }
+
     /**
      * Discovery messages history used for client reconnect.
      */
@@ -2141,27 +2173,6 @@ class ServerImpl extends TcpDiscoveryImpl {
                 log.debug("Connection check frequency is calculated: " + connCheckFreq);
         }
 
-        private void addMessageFailedNodes(TcpDiscoveryAbstractMessage msg) {
-            if (msg.failedNodes() != null) {
-                for (UUID nodeId : msg.failedNodes()) {
-                    TcpDiscoveryNode failedNode = ring.node(nodeId);
-
-                    if (failedNode != null) {
-                        boolean add;
-
-                        synchronized (mux) {
-                            add = failedNodes.add(failedNode);
-                        }
-
-                        if (add)
-                            debugLog(null, "New failed node [node=" + failedNode + ", msg=" + msg + ']');
-                    }
-                    else
-                        debugLog(null, "Unknown failed node [nodeId=" + nodeId + ", msg=" + msg + ']');
-                }
-            }
-        }
-
         /**
          * @param msg Message to process.
          */
@@ -2175,7 +2186,7 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                 spi.stats.onMessageProcessingStarted(msg);
 
-                addMessageFailedNodes(msg);
+                processMessageFailedNodes(msg);
 
                 if (msg instanceof TcpDiscoveryJoinRequestMessage)
                     processJoinRequestMessage((TcpDiscoveryJoinRequestMessage)msg);
@@ -3589,7 +3600,7 @@ class ServerImpl extends TcpDiscoveryImpl {
                         spi.onExchange(node.id(), entry.getKey(), entry.getValue(), U.gridClassLoader());
                 }
 
-                addMessageFailedNodes(msg);
+                processMessageFailedNodes(msg);
             }
 
             if (sendMessageToRemotes(msg))
@@ -4915,6 +4926,12 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                     // Handshake.
                     TcpDiscoveryHandshakeRequest req = (TcpDiscoveryHandshakeRequest)msg;
+
+                    if (req.failedNodes() != null && req.failedNodes().contains(getLocalNodeId())) {
+                        debugLog(msg, "Ignore handshake request: " + msg);
+
+                        return;
+                    }
 
                     UUID nodeId = req.creatorNodeId();
 
