@@ -19,10 +19,13 @@ package org.apache.ignite.spi.discovery.tcp.messages;
 
 import java.io.Externalizable;
 import java.io.Serializable;
+import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 import org.apache.ignite.internal.util.tostring.GridToStringExclude;
 import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.lang.IgniteUuid;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Base class to implement discovery messages.
@@ -61,6 +64,9 @@ public abstract class TcpDiscoveryAbstractMessage implements Serializable {
 
     /** Pending message index. */
     private short pendingIdx;
+
+    /** */
+    private Collection<UUID> failedNodes;
 
     /**
      * Default no-arg constructor for {@link Externalizable} interface.
@@ -234,6 +240,14 @@ public abstract class TcpDiscoveryAbstractMessage implements Serializable {
      */
     public boolean highPriority() {
         return false;
+    }
+
+    public void failedNodes(Collection<UUID> failedNodes) {
+        this.failedNodes = failedNodes;
+    }
+
+    @Nullable public Collection<UUID> failedNodes() {
+        return failedNodes;
     }
 
     /** {@inheritDoc} */

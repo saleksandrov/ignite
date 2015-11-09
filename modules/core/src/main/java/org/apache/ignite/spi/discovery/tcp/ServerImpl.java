@@ -2154,6 +2154,19 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                 spi.stats.onMessageProcessingStarted(msg);
 
+                if (msg.failedNodes() != null) {
+                    for (UUID nodeId : msg.failedNodes()) {
+                        TcpDiscoveryNode failedNode = ring.node(nodeId);
+
+                        if (failedNode != null) {
+                            boolean add = failedNodes.add(failedNode);
+
+                            if (add)
+                                debugLog(null, "New failed node [node=" + failedNode + ", msg=" + msg + ']');
+                        }
+                    }
+                }
+
                 if (msg instanceof TcpDiscoveryJoinRequestMessage)
                     processJoinRequestMessage((TcpDiscoveryJoinRequestMessage)msg);
 
@@ -2334,7 +2347,9 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                         if (debugMode)
                             debugLog(null, "New next node [newNext=" + newNext + ", formerNext=" + next +
-                                ", ring=" + ring + ", failedNodes=" + failedNodes + ']');
+                                ", ring=" + ring +
+                                ", msg=" + msg +
+                                ", failedNodes=" + failedNodes + ']');
 
                         U.closeQuiet(sock);
 
@@ -2579,6 +2594,15 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                                 if (timeoutHelper == null)
                                     timeoutHelper = new IgniteSpiOperationTimeoutHelper(spi);
+
+                                if (!failedNodes.isEmpty()) {
+                                    List<UUID> failedNodeIds = new ArrayList<>(failedNodes.size());
+
+                                    for (TcpDiscoveryNode node : failedNodes)
+                                        failedNodeIds.add(node.id());
+
+                                    msg.failedNodes(failedNodeIds);
+                                }
 
                                 writeToSocket(sock, msg, timeoutHelper.nextTimeoutChunk(spi.getSocketTimeout()));
 
@@ -4729,9 +4753,9 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                     synchronized (mux) {
                         readers.add(reader);
-
-                        reader.start();
                     }
+
+                    reader.start();
 
                     spi.stats.onServerSocketInitialized(U.currentTimeMillis() - tstamp);
                 }
