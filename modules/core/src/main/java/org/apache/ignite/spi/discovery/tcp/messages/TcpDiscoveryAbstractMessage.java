@@ -20,12 +20,14 @@ package org.apache.ignite.spi.discovery.tcp.messages;
 import java.io.Externalizable;
 import java.io.Serializable;
 import java.util.Collection;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 import org.apache.ignite.internal.util.tostring.GridToStringExclude;
 import org.apache.ignite.internal.util.tostring.GridToStringInclude;
 import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.lang.IgniteUuid;
+import org.apache.ignite.spi.discovery.tcp.internal.TcpDiscoveryNode;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -68,7 +70,7 @@ public abstract class TcpDiscoveryAbstractMessage implements Serializable {
 
     /** */
     @GridToStringInclude
-    private Collection<UUID> failedNodes;
+    private Set<UUID> failedNodes;
 
     /**
      * Default no-arg constructor for {@link Externalizable} interface.
@@ -244,8 +246,13 @@ public abstract class TcpDiscoveryAbstractMessage implements Serializable {
         return false;
     }
 
-    public void failedNodes(Collection<UUID> failedNodes) {
-        this.failedNodes = failedNodes;
+    public void addFailedNode(TcpDiscoveryNode node) {
+        assert node != null;
+
+        if (failedNodes == null)
+            failedNodes = new HashSet<>();
+
+        failedNodes.add(node.id());
     }
 
     @Nullable public Collection<UUID> failedNodes() {

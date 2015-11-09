@@ -2141,6 +2141,27 @@ class ServerImpl extends TcpDiscoveryImpl {
                 log.debug("Connection check frequency is calculated: " + connCheckFreq);
         }
 
+        private void addMessageFailedNodes(TcpDiscoveryAbstractMessage msg) {
+            if (msg.failedNodes() != null) {
+                for (UUID nodeId : msg.failedNodes()) {
+                    TcpDiscoveryNode failedNode = ring.node(nodeId);
+
+                    if (failedNode != null) {
+                        boolean add;
+
+                        synchronized (mux) {
+                            add = failedNodes.add(failedNode);
+                        }
+
+                        if (add)
+                            debugLog(null, "New failed node [node=" + failedNode + ", msg=" + msg + ']');
+                    }
+                    else
+                        debugLog(null, "Unknown failed node [nodeId=" + nodeId + ", msg=" + msg + ']');
+                }
+            }
+        }
+
         /**
          * @param msg Message to process.
          */
@@ -2154,22 +2175,7 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                 spi.stats.onMessageProcessingStarted(msg);
 
-                if (msg.failedNodes() != null) {
-                    for (UUID nodeId : msg.failedNodes()) {
-                        TcpDiscoveryNode failedNode = ring.node(nodeId);
-
-                        if (failedNode != null) {
-                            boolean add;
-
-                            synchronized (mux) {
-                                add = failedNodes.add(failedNode);
-                            }
-
-                            if (add)
-                                debugLog(null, "New failed node [node=" + failedNode + ", msg=" + msg + ']');
-                        }
-                    }
-                }
+                addMessageFailedNodes(msg);
 
                 if (msg instanceof TcpDiscoveryJoinRequestMessage)
                     processJoinRequestMessage((TcpDiscoveryJoinRequestMessage)msg);
@@ -2600,12 +2606,11 @@ class ServerImpl extends TcpDiscoveryImpl {
                                     timeoutHelper = new IgniteSpiOperationTimeoutHelper(spi);
 
                                 if (!failedNodes.isEmpty()) {
-                                    List<UUID> failedNodeIds = new ArrayList<>(failedNodes.size());
+                                    for (TcpDiscoveryNode node : failedNodes) {
+                                        debugLog(null, "Add failed node [node=" + node + ", msg=" + msg + ']');
 
-                                    for (TcpDiscoveryNode node : failedNodes)
-                                        failedNodeIds.add(node.id());
-
-                                    msg.failedNodes(failedNodeIds);
+                                        msg.addFailedNode(node);
+                                    }
                                 }
 
                                 writeToSocket(sock, msg, timeoutHelper.nextTimeoutChunk(spi.getSocketTimeout()));
@@ -3583,6 +3588,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                     for (Map.Entry<UUID, Map<Integer, byte[]>> entry : dataMap.entrySet())
                         spi.onExchange(node.id(), entry.getKey(), entry.getValue(), U.gridClassLoader());
                 }
+
+                addMessageFailedNodes(msg);
             }
 
             if (sendMessageToRemotes(msg))
