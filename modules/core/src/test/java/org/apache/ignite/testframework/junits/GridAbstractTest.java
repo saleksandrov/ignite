@@ -1117,20 +1117,34 @@ public abstract class GridAbstractTest extends TestCase {
 
         cfg.setNodeId(null);
 
-        if (gridName != null && gridName.startsWith(getTestGridName()) && gridName.matches(".*\\d")) {
+        if (gridName != null && gridName.matches(".*\\d")) {
             String idStr = UUID.randomUUID().toString();
 
-            String idxStr = String.valueOf(getTestGridIndex(gridName));
+            if (gridName.startsWith(getTestGridName())) {
+                String idxStr = String.valueOf(getTestGridIndex(gridName));
 
-            while (idxStr.length() < 5)
-                idxStr = '0' + idxStr;
+                while (idxStr.length() < 5)
+                    idxStr = '0' + idxStr;
 
-            char[] chars = idStr.toCharArray();
+                char[] chars = idStr.toCharArray();
 
-            for (int i = 0; i < idxStr.length(); i++)
-                chars[chars.length - idxStr.length() + i] = idxStr.charAt(i);
+                for (int i = 0; i < idxStr.length(); i++)
+                    chars[chars.length - idxStr.length() + i] = idxStr.charAt(i);
 
-            cfg.setNodeId(UUID.fromString(new String(chars)));
+                cfg.setNodeId(UUID.fromString(new String(chars)));
+            }
+            else {
+                char[] chars = idStr.toCharArray();
+
+                chars[0] = gridName.charAt(gridName.length() - 1);
+                chars[1] = '0';
+
+                chars[chars.length - 3] = '0';
+                chars[chars.length - 2] = '0';
+                chars[chars.length - 1] = gridName.charAt(gridName.length() - 1);
+
+                cfg.setNodeId(UUID.fromString(new String(chars)));
+            }
         }
 
         if (isMultiJvm())
