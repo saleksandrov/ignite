@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -1542,6 +1543,64 @@ public class TcpDiscoverySelfTest extends GridCommonAbstractTest {
     }
 
     /**
+     * Adds some node in failed list after join process finished.
+     *
+     * @throws Exception If failed.
+     */
+    public void testFailedNodes5() throws Exception {
+        try {
+            ThreadLocalRandom rnd = ThreadLocalRandom.current();
+
+            for (int iter = 0; iter < 3; iter++) {
+                final int NODES = iter == 0 ? 2 : rnd.nextInt(3, 6);
+
+                for (int i = 0; i < NODES; i++) {
+                    nodeSpi.set(new TestFailedNodesSpi(-1));
+
+                    startGrid(i);
+                }
+
+                Map<Long, Ignite> nodes = new HashMap<>();
+
+                for (int i = 0; i < NODES; i++) {
+                    Ignite ignite = ignite(i);
+
+                    nodes.put(ignite.cluster().localNode().order(), ignite);
+                }
+
+                Ignite ignite = ignite(rnd.nextInt(NODES));
+
+                log.info("Iteration [iter=" + iter + ", nodes=" + NODES + ", failFrom=" + ignite.name() + ']');
+
+                TestFailedNodesSpi spi = (TestFailedNodesSpi)ignite.configuration().getDiscoverySpi();
+
+                spi.failSingleMsg = true;
+
+                long order = ignite.cluster().localNode().order();
+
+                long nextOrder = order == NODES ? 1 : order + 1;
+
+                Ignite failingNode = nodes.get(nextOrder);
+
+                assertNotNull(failingNode);
+
+                waitNodeStop(failingNode.name());
+
+                Ignite newNode = startGrid(NODES);
+
+                assertEquals(NODES, newNode.cluster().nodes().size());
+
+                tryCreateCache(NODES);
+
+                stopAllGrids();
+            }
+        }
+        finally {
+            stopAllGrids();
+        }
+    }
+
+    /**
      * @param nodeName Node name.
      * @throws Exception If failed.
      */
@@ -1602,6 +1661,9 @@ public class TcpDiscoverySelfTest extends GridCommonAbstractTest {
         /** */
         private boolean stop;
 
+        /** */
+        private volatile boolean failSingleMsg;
+
         /**
          * @param failOrder Spi fails connection if local node order equals to this order.
          */
@@ -1616,6 +1678,16 @@ public class TcpDiscoverySelfTest extends GridCommonAbstractTest {
             long timeout) throws IOException, IgniteCheckedException {
             if (stop)
                 return;
+
+            if (failSingleMsg) {
+                failSingleMsg = false;
+
+                log.info("IO error on message send [locNode=" + locNode + ", msg=" + msg + ']');
+
+                sock.close();
+
+                throw new SocketTimeoutException();
+            }
 
             if (locNode.internalOrder() == failOrder &&
                 (msg instanceof TcpDiscoveryNodeAddedMessage) &&
