@@ -245,8 +245,6 @@ public class GridDhtPreloader extends GridCachePreloaderAdapter {
         if (log.isDebugEnabled())
             log.debug("DHT rebalancer onKernalStop callback.");
 
-        stopping = true;
-
         cctx.events().removeListener(discoLsnr);
 
         // Acquire write busy lock.
@@ -257,11 +255,6 @@ public class GridDhtPreloader extends GridCachePreloaderAdapter {
 
         if (demander != null)
             demander.stop();
-
-        IgniteCheckedException err = stopError();
-
-        for (GridDhtForceKeysFuture fut : forceKeyFuts.values())
-            fut.onDone(err);
 
         top = null;
     }
@@ -766,9 +759,6 @@ public class GridDhtPreloader extends GridCachePreloaderAdapter {
      */
     void addFuture(GridDhtForceKeysFuture<?, ?> fut) {
         forceKeyFuts.put(fut.futureId(), fut);
-
-        if (stopping)
-            fut.onDone(stopError());
     }
 
     /**
