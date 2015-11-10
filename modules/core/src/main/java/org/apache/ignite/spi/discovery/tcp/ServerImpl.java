@@ -2272,6 +2272,8 @@ class ServerImpl extends TcpDiscoveryImpl {
             checkHeartbeatsReceiving();
 
             checkPendingCustomMessages();
+
+            checkFailedNodesList();
         }
 
         /**
@@ -4184,7 +4186,7 @@ class ServerImpl extends TcpDiscoveryImpl {
                                         onException("Failed to respond to status check message (connection refused) " +
                                             "[recipient=" + msg.creatorNodeId() + ", status=" + msg.status() + ']', e);
                                     }
-                                    else {
+                                    else if (!spi.isNodeStopping0()){
                                         if (pingNode(msg.creatorNode()))
                                             // Node exists and accepts incoming connections.
                                             U.error(log, "Failed to respond to status check message [recipient=" +
@@ -4570,6 +4572,26 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                 if (sendMessageToRemotes(msg))
                     sendMessageAcrossRing(msg);
+            }
+        }
+
+        private void checkFailedNodesList() {
+            List<TcpDiscoveryNodeFailedMessage> msgs = null;
+
+            synchronized (mux) {
+                for (TcpDiscoveryNode node : failedNodes) {
+                    if (ring.node(node.id()) != null) {
+                        if (msgs == null)
+                            msgs = new ArrayList<>(failedNodes.size());
+
+                        msgs.add(new TcpDiscoveryNodeFailedMessage(getLocalNodeId(), node.id(), node.internalOrder()));
+                    }
+                }
+            }
+
+            if (msgs != null) {
+                for (TcpDiscoveryNodeFailedMessage msg : msgs)
+                    addMessage(msg);
             }
         }
 
