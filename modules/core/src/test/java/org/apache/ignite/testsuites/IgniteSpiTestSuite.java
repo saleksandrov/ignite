@@ -19,7 +19,6 @@ package org.apache.ignite.testsuites;
 
 import junit.framework.TestSuite;
 import org.apache.ignite.internal.managers.GridNoopManagerSelfTest;
-import org.apache.ignite.spi.discovery.tcp.TcpDiscoveryMultiThreadedTest;
 
 /**
  * Grid SPI test suite.
@@ -32,8 +31,38 @@ public class IgniteSpiTestSuite extends TestSuite {
     public static TestSuite suite() throws Exception {
         TestSuite suite = new TestSuite("Ignite SPIs Test Suite");
 
+        // Failover.
+        suite.addTest(IgniteSpiFailoverSelfTestSuite.suite());
+
+        // Collision.
+        suite.addTest(IgniteSpiCollisionSelfTestSuite.suite());
+
+        // Event storage.
+        suite.addTest(IgniteSpiEventStorageSelfTestSuite.suite());
+
+        // Load Balancing.
+        suite.addTest(IgniteSpiLoadBalancingSelfTestSuite.suite());
+
+        // Swap space.
+        suite.addTest(IgniteSpiSwapSpaceSelfTestSuite.suite());
+
+        // Checkpoints.
+        suite.addTest(IgniteSpiCheckpointSelfTestSuite.suite());
+
+        // Deployment
+        suite.addTest(IgniteSpiDeploymentSelfTestSuite.suite());
+
+        // Discovery.
+        suite.addTest(IgniteSpiDiscoverySelfTestSuite.suite());
+
+        // Communication.
+        suite.addTest(IgniteSpiCommunicationSelfTestSuite.suite());
+
+        // Indexing.
+        suite.addTest(IgniteSpiIndexingSelfTestSuite.suite());
+
         // All other tests.
-        suite.addTestSuite(TcpDiscoveryMultiThreadedTest.class);
+        suite.addTestSuite(GridNoopManagerSelfTest.class);
 
         return suite;
     }
