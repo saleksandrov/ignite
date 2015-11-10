@@ -150,14 +150,14 @@ public class GridNearAtomicCache<K, V> extends GridNearCacheAdapter<K, V> {
 
         String taskName = ctx.kernalContext().task().resolveTaskName(req.taskNameHash());
 
-        for (int i = 0; i < req.keys().size(); i++) {
-            if (F.contains(skipped, i))
-                continue;
+        if (req.singleUpdate()) {
+            if (F.contains(skipped, 0))
+                return;
 
-            KeyCacheObject key = req.keys().get(i);
+            KeyCacheObject key = req.singleKey();
 
             if (F.contains(failed, key))
-                continue;
+                return;
 
             if (ctx.affinity().belongs(ctx.localNode(), ctx.affinity().partition(key), req.topologyVersion())) { // Reader became backup.
                 GridCacheEntryEx entry = peekEx(key);
@@ -165,25 +165,22 @@ public class GridNearAtomicCache<K, V> extends GridNearCacheAdapter<K, V> {
                 if (entry != null && entry.markObsolete(ver))
                     removeEntry(entry);
 
-                continue;
+                return;
             }
 
             CacheObject val = null;
 
-            if (F.contains(nearValsIdxs, i)) {
+            if (F.contains(nearValsIdxs, 0))
                 val = res.nearValue(nearValIdx);
-
-                nearValIdx++;
-            }
             else {
                 assert req.operation() != TRANSFORM;
 
                 if (req.operation() != DELETE)
-                    val = req.value(i);
+                    val = req.singleWriteValue();
             }
 
-            long ttl = res.nearTtl(i);
-            long expireTime = res.nearExpireTime(i);
+            long ttl = res.nearTtl(0);
+            long expireTime = res.nearExpireTime(0);
 
             if (ttl != CU.TTL_NOT_CHANGED && expireTime == CU.EXPIRE_TIME_CALCULATE)
                 expireTime = CU.toExpireTime(ttl);
@@ -201,6 +198,61 @@ public class GridNearAtomicCache<K, V> extends GridNearCacheAdapter<K, V> {
             }
             catch (IgniteCheckedException e) {
                 res.addFailedKey(key, new IgniteCheckedException("Failed to update key in near cache: " + key, e));
+            }
+        }
+        else {
+            for (int i = 0; i < req.keys().size(); i++) {
+                if (F.contains(skipped, i))
+                    continue;
+
+                KeyCacheObject key = req.keys().get(i);
+
+                if (F.contains(failed, key))
+                    continue;
+
+                if (ctx.affinity().belongs(ctx.localNode(), ctx.affinity().partition(key), req.topologyVersion())) { // Reader became backup.
+                    GridCacheEntryEx entry = peekEx(key);
+
+                    if (entry != null && entry.markObsolete(ver))
+                        removeEntry(entry);
+
+                    continue;
+                }
+
+                CacheObject val = null;
+
+                if (F.contains(nearValsIdxs, i)) {
+                    val = res.nearValue(nearValIdx);
+
+                    nearValIdx++;
+                }
+                else {
+                    assert req.operation() != TRANSFORM;
+
+                    if (req.operation() != DELETE)
+                        val = req.value(i);
+                }
+
+                long ttl = res.nearTtl(i);
+                long expireTime = res.nearExpireTime(i);
+
+                if (ttl != CU.TTL_NOT_CHANGED && expireTime == CU.EXPIRE_TIME_CALCULATE)
+                    expireTime = CU.toExpireTime(ttl);
+
+                try {
+                    processNearAtomicUpdateResponse(ver,
+                        key,
+                        val,
+                        null,
+                        ttl,
+                        expireTime,
+                        req.nodeId(),
+                        req.subjectId(),
+                        taskName);
+                }
+                catch (IgniteCheckedException e) {
+                    res.addFailedKey(key, new IgniteCheckedException("Failed to update key in near cache: " + key, e));
+                }
             }
         }
     }

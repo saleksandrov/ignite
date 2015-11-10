@@ -89,6 +89,16 @@ public class GridNearAtomicUpdateRequest extends GridCacheMessage implements Gri
     /** Update operation. */
     private GridCacheOperation op;
 
+    /** */
+    private KeyCacheObject singleKey;
+
+    /** */
+    private CacheObject singleVal;
+
+    /** */
+    @GridDirectTransient
+    private EntryProcessor singleEntryProcessor;
+
     /** Keys to update. */
     @GridToStringInclude
     @GridDirectCollection(KeyCacheObject.class)
@@ -105,6 +115,8 @@ public class GridNearAtomicUpdateRequest extends GridCacheMessage implements Gri
     /** Entry processors bytes. */
     @GridDirectCollection(byte[].class)
     private List<byte[]> entryProcessorsBytes;
+
+    private byte[] singleEntryProcessorsBytes;
 
     /** Optional arguments for entry processor. */
     @GridDirectTransient
@@ -198,7 +210,8 @@ public class GridNearAtomicUpdateRequest extends GridCacheMessage implements Gri
         int taskNameHash,
         boolean skipStore,
         boolean clientReq,
-        boolean addDepInfo
+        boolean addDepInfo,
+        boolean single
     ) {
         assert futVer != null;
 
@@ -222,7 +235,12 @@ public class GridNearAtomicUpdateRequest extends GridCacheMessage implements Gri
         this.clientReq = clientReq;
         this.addDepInfo = addDepInfo;
 
-        keys = new ArrayList<>();
+        if (!single)
+            keys = new ArrayList<>();
+    }
+
+    public boolean singleUpdate() {
+        return singleKey != null;
     }
 
     /** {@inheritDoc} */
@@ -335,6 +353,22 @@ public class GridNearAtomicUpdateRequest extends GridCacheMessage implements Gri
         return skipStore;
     }
 
+    public void addSingleUpdate(KeyCacheObject key, @Nullable Object val, boolean primary) {
+        assert val != null || op == DELETE;
+
+        if (op == TRANSFORM) {
+            assert val instanceof EntryProcessor : val;
+
+            singleEntryProcessor = (EntryProcessor<Object, Object, Object>)val;
+        }
+        else
+            singleVal = (CacheObject)val;
+
+        singleKey = key;
+
+        hasPrimary = primary;
+    }
+
     /**
      * @param key Key to add.
      * @param val Optional update value.
@@ -413,6 +447,20 @@ public class GridNearAtomicUpdateRequest extends GridCacheMessage implements Gri
 
             conflictExpireTimes.add(conflictExpireTime);
         }
+    }
+
+    public KeyCacheObject singleKey() {
+        assert singleKey != null;
+
+        return singleKey;
+    }
+
+    public CacheObject singleWriteValue() {
+        return singleVal;
+    }
+
+    public EntryProcessor singleEntryProcessor() {
+        return singleEntryProcessor;
     }
 
     /**
@@ -539,8 +587,6 @@ public class GridNearAtomicUpdateRequest extends GridCacheMessage implements Gri
 
         GridCacheContext cctx = ctx.cacheContext(cacheId);
 
-        prepareMarshalCacheObjects(keys, cctx);
-
         if (filter != null) {
             boolean hasFilter = false;
 
@@ -559,17 +605,40 @@ public class GridNearAtomicUpdateRequest extends GridCacheMessage implements Gri
         if (expiryPlc != null)
             expiryPlcBytes = CU.marshal(cctx, new IgniteExternalizableExpiryPolicy(expiryPlc));
 
-        if (op == TRANSFORM) {
-            // force addition of deployment info for entry processors if P2P is enabled globally.
-            if (!addDepInfo && ctx.deploymentEnabled())
-                addDepInfo = true;
+        if (singleKey != null) {
+            prepareMarshalCacheObject(singleKey, cctx);
 
-            entryProcessorsBytes = marshalCollection(entryProcessors, cctx);
+            if (op == TRANSFORM) {
+                // TODO
+                assert false;
 
-            invokeArgsBytes = marshalInvokeArguments(invokeArgs, cctx);
+                // force addition of deployment info for entry processors if P2P is enabled globally.
+                if (!addDepInfo && ctx.deploymentEnabled())
+                    addDepInfo = true;
+
+                // TODO
+                // entryProcessorsBytes = marshalCollection(entryProcessors, cctx);
+
+                invokeArgsBytes = marshalInvokeArguments(invokeArgs, cctx);
+            }
+            else
+                prepareMarshalCacheObject(singleVal, cctx);
         }
-        else
-            prepareMarshalCacheObjects(vals, cctx);
+        else {
+            prepareMarshalCacheObjects(keys, cctx);
+
+            if (op == TRANSFORM) {
+                // force addition of deployment info for entry processors if P2P is enabled globally.
+                if (!addDepInfo && ctx.deploymentEnabled())
+                    addDepInfo = true;
+
+                entryProcessorsBytes = marshalCollection(entryProcessors, cctx);
+
+                invokeArgsBytes = marshalInvokeArguments(invokeArgs, cctx);
+            }
+            else
+                prepareMarshalCacheObjects(vals, cctx);
+        }
     }
 
     /** {@inheritDoc} */
@@ -578,12 +647,24 @@ public class GridNearAtomicUpdateRequest extends GridCacheMessage implements Gri
 
         GridCacheContext cctx = ctx.cacheContext(cacheId);
 
-        finishUnmarshalCacheObjects(keys, cctx, ldr);
+        if (singleKey != null) {
+            finishUnmarshalCacheObject(singleKey, cctx, ldr);
 
-        if (op == TRANSFORM)
-            entryProcessors = unmarshalCollection(entryProcessorsBytes, ctx, ldr);
-        else
-            finishUnmarshalCacheObjects(vals, cctx, ldr);
+            if (op == TRANSFORM) {
+                // TODO
+                assert false;
+            }
+            else
+                finishUnmarshalCacheObject(singleVal, cctx, ldr);
+        }
+        else {
+            finishUnmarshalCacheObjects(keys, cctx, ldr);
+
+            if (op == TRANSFORM)
+                entryProcessors = unmarshalCollection(entryProcessorsBytes, ctx, ldr);
+            else
+                finishUnmarshalCacheObjects(vals, cctx, ldr);
+        }
 
         if (filter != null) {
             for (CacheEntryPredicate p : filter) {
@@ -703,48 +784,66 @@ public class GridNearAtomicUpdateRequest extends GridCacheMessage implements Gri
                 writer.incrementState();
 
             case 17:
-                if (!writer.writeBoolean("skipStore", skipStore))
+                if (!writer.writeByteArray("singleEntryProcessorsBytes", singleEntryProcessorsBytes))
                     return false;
 
                 writer.incrementState();
 
             case 18:
-                if (!writer.writeUuid("subjId", subjId))
+                if (!writer.writeMessage("singleKey", singleKey))
                     return false;
 
                 writer.incrementState();
 
             case 19:
-                if (!writer.writeByte("syncMode", syncMode != null ? (byte)syncMode.ordinal() : -1))
+                if (!writer.writeMessage("singleVal", singleVal))
                     return false;
 
                 writer.incrementState();
 
             case 20:
-                if (!writer.writeInt("taskNameHash", taskNameHash))
+                if (!writer.writeBoolean("skipStore", skipStore))
                     return false;
 
                 writer.incrementState();
 
             case 21:
-                if (!writer.writeBoolean("topLocked", topLocked))
+                if (!writer.writeUuid("subjId", subjId))
                     return false;
 
                 writer.incrementState();
 
             case 22:
-                if (!writer.writeMessage("topVer", topVer))
+                if (!writer.writeByte("syncMode", syncMode != null ? (byte)syncMode.ordinal() : -1))
                     return false;
 
                 writer.incrementState();
 
             case 23:
-                if (!writer.writeMessage("updateVer", updateVer))
+                if (!writer.writeInt("taskNameHash", taskNameHash))
                     return false;
 
                 writer.incrementState();
 
             case 24:
+                if (!writer.writeBoolean("topLocked", topLocked))
+                    return false;
+
+                writer.incrementState();
+
+            case 25:
+                if (!writer.writeMessage("topVer", topVer))
+                    return false;
+
+                writer.incrementState();
+
+            case 26:
+                if (!writer.writeMessage("updateVer", updateVer))
+                    return false;
+
+                writer.incrementState();
+
+            case 27:
                 if (!writer.writeCollection("vals", vals, MessageCollectionItemType.MSG))
                     return false;
 
@@ -883,7 +982,7 @@ public class GridNearAtomicUpdateRequest extends GridCacheMessage implements Gri
                 reader.incrementState();
 
             case 17:
-                skipStore = reader.readBoolean("skipStore");
+                singleEntryProcessorsBytes = reader.readByteArray("singleEntryProcessorsBytes");
 
                 if (!reader.isLastRead())
                     return false;
@@ -891,7 +990,7 @@ public class GridNearAtomicUpdateRequest extends GridCacheMessage implements Gri
                 reader.incrementState();
 
             case 18:
-                subjId = reader.readUuid("subjId");
+                singleKey = reader.readMessage("singleKey");
 
                 if (!reader.isLastRead())
                     return false;
@@ -899,6 +998,30 @@ public class GridNearAtomicUpdateRequest extends GridCacheMessage implements Gri
                 reader.incrementState();
 
             case 19:
+                singleVal = reader.readMessage("singleVal");
+
+                if (!reader.isLastRead())
+                    return false;
+
+                reader.incrementState();
+
+            case 20:
+                skipStore = reader.readBoolean("skipStore");
+
+                if (!reader.isLastRead())
+                    return false;
+
+                reader.incrementState();
+
+            case 21:
+                subjId = reader.readUuid("subjId");
+
+                if (!reader.isLastRead())
+                    return false;
+
+                reader.incrementState();
+
+            case 22:
                 byte syncModeOrd;
 
                 syncModeOrd = reader.readByte("syncMode");
@@ -910,7 +1033,7 @@ public class GridNearAtomicUpdateRequest extends GridCacheMessage implements Gri
 
                 reader.incrementState();
 
-            case 20:
+            case 23:
                 taskNameHash = reader.readInt("taskNameHash");
 
                 if (!reader.isLastRead())
@@ -918,7 +1041,7 @@ public class GridNearAtomicUpdateRequest extends GridCacheMessage implements Gri
 
                 reader.incrementState();
 
-            case 21:
+            case 24:
                 topLocked = reader.readBoolean("topLocked");
 
                 if (!reader.isLastRead())
@@ -926,7 +1049,7 @@ public class GridNearAtomicUpdateRequest extends GridCacheMessage implements Gri
 
                 reader.incrementState();
 
-            case 22:
+            case 25:
                 topVer = reader.readMessage("topVer");
 
                 if (!reader.isLastRead())
@@ -934,7 +1057,7 @@ public class GridNearAtomicUpdateRequest extends GridCacheMessage implements Gri
 
                 reader.incrementState();
 
-            case 23:
+            case 26:
                 updateVer = reader.readMessage("updateVer");
 
                 if (!reader.isLastRead())
@@ -942,7 +1065,7 @@ public class GridNearAtomicUpdateRequest extends GridCacheMessage implements Gri
 
                 reader.incrementState();
 
-            case 24:
+            case 27:
                 vals = reader.readCollection("vals", MessageCollectionItemType.MSG);
 
                 if (!reader.isLastRead())
@@ -962,7 +1085,7 @@ public class GridNearAtomicUpdateRequest extends GridCacheMessage implements Gri
 
     /** {@inheritDoc} */
     @Override public byte fieldsCount() {
-        return 25;
+        return 28;
     }
 
     /** {@inheritDoc} */

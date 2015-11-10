@@ -511,6 +511,15 @@ public abstract class GridCacheMessage implements Message {
         }
     }
 
+    protected final void prepareMarshalCacheObject(@Nullable CacheObject obj, GridCacheContext ctx) throws IgniteCheckedException {
+        if (obj != null) {
+            obj.prepareMarshal(ctx.cacheObjectContext());
+
+            if (addDepInfo)
+                prepareObject(obj.value(ctx.cacheObjectContext(), false), ctx);
+        }
+    }
+
     /**
      * @param col Collection.
      * @param ctx Cache context.
@@ -554,6 +563,15 @@ public abstract class GridCacheMessage implements Message {
             if (obj != null)
                 obj.finishUnmarshal(ctx.cacheObjectContext(), ldr);
         }
+    }
+
+    protected final void finishUnmarshalCacheObject(@Nullable CacheObject obj,
+        GridCacheContext ctx,
+        ClassLoader ldr)
+        throws IgniteCheckedException
+    {
+        if (obj != null)
+            obj.finishUnmarshal(ctx.cacheObjectContext(), ldr);
     }
 
     /**

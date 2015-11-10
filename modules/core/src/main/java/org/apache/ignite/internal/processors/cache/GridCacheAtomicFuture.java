@@ -18,8 +18,11 @@
 package org.apache.ignite.internal.processors.cache;
 
 import java.util.Collection;
+import java.util.UUID;
 import org.apache.ignite.internal.IgniteInternalFuture;
 import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
+import org.apache.ignite.internal.processors.cache.distributed.dht.atomic.GridDhtAtomicUpdateResponse;
+import org.apache.ignite.internal.processors.cache.distributed.dht.atomic.GridNearAtomicUpdateResponse;
 
 /**
  * Update future for atomic cache.
@@ -37,4 +40,12 @@ public interface GridCacheAtomicFuture<R> extends GridCacheFuture<R> {
      * @return Future keys.
      */
     public Collection<?> keys();
+
+    public void map();
+
+    public void onResult(UUID nodeId, GridDhtAtomicUpdateResponse res);
+
+    public void onResult(UUID nodeId, GridNearAtomicUpdateResponse res);
+
+    public void onResult(UUID nodeId);
 }

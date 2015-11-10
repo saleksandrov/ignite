@@ -17,14 +17,11 @@
 
 package org.apache.ignite.internal.processors.cache.distributed.dht.atomic;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
-import javax.cache.processor.EntryProcessor;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.IgniteLogger;
 import org.apache.ignite.cache.CacheWriteSynchronizationMode;
@@ -55,7 +52,7 @@ import static org.apache.ignite.cache.CacheWriteSynchronizationMode.FULL_SYNC;
 /**
  * DHT atomic cache backup update future.
  */
-public class GridDhtAtomicUpdateFuture extends GridFutureAdapter<Void>
+public class GridDhtAtomicSingleUpdateFuture extends GridFutureAdapter<Void>
     implements GridCacheAtomicFuture<Void> {
     /** */
     private static final long serialVersionUID = 0L;
@@ -75,9 +72,6 @@ public class GridDhtAtomicUpdateFuture extends GridFutureAdapter<Void>
     /** Write version. */
     private GridCacheVersion writeVer;
 
-    /** Force transform backup flag. */
-    private boolean forceTransformBackups;
-
     /** Completion callback. */
     @GridToStringExclude
     private CI2<GridNearAtomicUpdateRequest, GridNearAtomicUpdateResponse> completionCb;
@@ -87,16 +81,13 @@ public class GridDhtAtomicUpdateFuture extends GridFutureAdapter<Void>
     private ConcurrentMap<UUID, GridDhtAtomicUpdateRequest> mappings = new ConcurrentHashMap8<>();
 
     /** Entries with readers. */
-    private Map<KeyCacheObject, GridDhtCacheEntry> nearReadersEntries;
+    private GridDhtCacheEntry nearReaderEntry;
 
     /** Update request. */
     private GridNearAtomicUpdateRequest updateReq;
 
     /** Update response. */
     private GridNearAtomicUpdateResponse updateRes;
-
-    /** Future keys. */
-    private Collection<KeyCacheObject> keys;
 
     /** */
     private boolean waitForExchange;
@@ -108,14 +99,16 @@ public class GridDhtAtomicUpdateFuture extends GridFutureAdapter<Void>
      * @param updateReq Update request.
      * @param updateRes Update response.
      */
-    public GridDhtAtomicUpdateFuture(
+    public GridDhtAtomicSingleUpdateFuture(
         GridCacheContext cctx,
         CI2<GridNearAtomicUpdateRequest,
-        GridNearAtomicUpdateResponse> completionCb,
+            GridNearAtomicUpdateResponse> completionCb,
         GridCacheVersion writeVer,
         GridNearAtomicUpdateRequest updateReq,
         GridNearAtomicUpdateResponse updateRes
     ) {
+        assert updateReq.singleUpdate() : updateReq;
+
         this.cctx = cctx;
         this.writeVer = writeVer;
 
@@ -125,9 +118,7 @@ public class GridDhtAtomicUpdateFuture extends GridFutureAdapter<Void>
         this.updateRes = updateRes;
 
         if (log == null)
-            log = U.logger(cctx.kernalContext(), logRef, GridDhtAtomicUpdateFuture.class);
-
-        keys = new ArrayList<>(updateReq.keys().size());
+            log = U.logger(cctx.kernalContext(), logRef, GridDhtAtomicSingleUpdateFuture.class);
 
         boolean topLocked = updateReq.topologyLocked() || (updateReq.fastMap() && !updateReq.clientRequest());
 
@@ -188,23 +179,17 @@ public class GridDhtAtomicUpdateFuture extends GridFutureAdapter<Void>
 
     /** {@inheritDoc} */
     @Override public Collection<KeyCacheObject> keys() {
-        return keys;
+        return Collections.singleton(updateReq.singleKey());
     }
 
     /**
      * @param entry Entry to map.
      * @param val Value to write.
-     * @param entryProcessor Entry processor.
      * @param ttl TTL (optional).
-     * @param conflictExpireTime Conflict expire time (optional).
-     * @param conflictVer Conflict version (optional).
      */
     public void addWriteEntry(GridDhtCacheEntry entry,
         @Nullable CacheObject val,
-        EntryProcessor<Object, Object, Object> entryProcessor,
-        long ttl,
-        long conflictExpireTime,
-        @Nullable GridCacheVersion conflictVer) {
+        long ttl) {
         AffinityTopologyVersion topVer = updateReq.topologyVersion();
 
         Collection<ClusterNode> dhtNodes = cctx.dht().topology().nodes(entry.partition(), topVer);
@@ -214,38 +199,29 @@ public class GridDhtAtomicUpdateFuture extends GridFutureAdapter<Void>
 
         CacheWriteSynchronizationMode syncMode = updateReq.writeSynchronizationMode();
 
-        keys.add(entry.key());
-
         for (ClusterNode node : dhtNodes) {
             UUID nodeId = node.id();
 
             if (!nodeId.equals(cctx.localNodeId())) {
-                GridDhtAtomicUpdateRequest updateReq = mappings.get(nodeId);
+                GridDhtAtomicUpdateRequest updateReq = new GridDhtAtomicUpdateRequest(
+                    cctx.cacheId(),
+                    nodeId,
+                    futVer,
+                    writeVer,
+                    syncMode,
+                    topVer,
+                    false,
+                    this.updateReq.subjectId(),
+                    this.updateReq.taskNameHash(),
+                    null,
+                    cctx.deploymentEnabled(),
+                    true);
 
-                if (updateReq == null) {
-                    updateReq = new GridDhtAtomicUpdateRequest(
-                        cctx.cacheId(),
-                        nodeId,
-                        futVer,
-                        writeVer,
-                        syncMode,
-                        topVer,
-                        forceTransformBackups,
-                        this.updateReq.subjectId(),
-                        this.updateReq.taskNameHash(),
-                        forceTransformBackups ? this.updateReq.invokeArguments() : null,
-                        cctx.deploymentEnabled(),
-                        false);
+                mappings.put(nodeId, updateReq);
 
-                    mappings.put(nodeId, updateReq);
-                }
-
-                updateReq.addWriteValue(entry.key(),
+                updateReq.addSingleWriteValue(entry.key(),
                     val,
-                    entryProcessor,
-                    ttl,
-                    conflictExpireTime,
-                    conflictVer);
+                    ttl);
             }
         }
     }
@@ -254,32 +230,27 @@ public class GridDhtAtomicUpdateFuture extends GridFutureAdapter<Void>
      * @param readers Entry readers.
      * @param entry Entry.
      * @param val Value.
-     * @param entryProcessor Entry processor..
      * @param ttl TTL for near cache update (optional).
-     * @param expireTime Expire time for near cache update (optional).
      */
     public void addNearWriteEntries(Iterable<UUID> readers,
         GridDhtCacheEntry entry,
         @Nullable CacheObject val,
-        EntryProcessor<Object, Object, Object> entryProcessor,
-        long ttl,
-        long expireTime) {
+        long ttl) {
         CacheWriteSynchronizationMode syncMode = updateReq.writeSynchronizationMode();
-
-        keys.add(entry.key());
 
         AffinityTopologyVersion topVer = updateReq.topologyVersion();
 
         for (UUID nodeId : readers) {
             GridDhtAtomicUpdateRequest updateReq = mappings.get(nodeId);
 
+
+            ClusterNode node = cctx.discovery().node(nodeId);
+
+            // Node left the grid.
+            if (node == null)
+                continue;
+
             if (updateReq == null) {
-                ClusterNode node = cctx.discovery().node(nodeId);
-
-                // Node left the grid.
-                if (node == null)
-                    continue;
-
                 updateReq = new GridDhtAtomicUpdateRequest(
                     cctx.cacheId(),
                     nodeId,
@@ -287,26 +258,23 @@ public class GridDhtAtomicUpdateFuture extends GridFutureAdapter<Void>
                     writeVer,
                     syncMode,
                     topVer,
-                    forceTransformBackups,
+                    false,
                     this.updateReq.subjectId(),
                     this.updateReq.taskNameHash(),
-                    forceTransformBackups ? this.updateReq.invokeArguments() : null,
+                    null,
                     cctx.deploymentEnabled(),
                     false);
 
                 mappings.put(nodeId, updateReq);
             }
 
-            if (nearReadersEntries == null)
-                nearReadersEntries = new HashMap<>();
-
-            nearReadersEntries.put(entry.key(), entry);
+            nearReaderEntry = entry;
 
             updateReq.addNearWriteValue(entry.key(),
                 val,
-                entryProcessor,
+                null,
                 ttl,
-                expireTime);
+                -1L);
         }
     }
 
@@ -315,10 +283,8 @@ public class GridDhtAtomicUpdateFuture extends GridFutureAdapter<Void>
         if (super.onDone(res, err)) {
             cctx.mvcc().removeAtomicFuture(version());
 
-            if (err != null) {
-                for (KeyCacheObject key : keys)
-                    updateRes.addFailedKey(key, err);
-            }
+            if (err != null)
+                updateRes.addFailedKey(updateReq.singleKey(), err);
 
             if (updateReq.writeSynchronizationMode() == FULL_SYNC)
                 completionCb.apply(updateReq, updateRes);
@@ -378,16 +344,14 @@ public class GridDhtAtomicUpdateFuture extends GridFutureAdapter<Void>
             this.updateRes.addFailedKeys(updateRes.failedKeys(), updateRes.error());
 
         if (!F.isEmpty(updateRes.nearEvicted())) {
-            for (KeyCacheObject key : updateRes.nearEvicted()) {
-                GridDhtCacheEntry entry = nearReadersEntries.get(key);
+            assert nearReaderEntry != null;
 
-                try {
-                    entry.removeReader(nodeId, updateRes.messageId());
-                }
-                catch (GridCacheEntryRemovedException e) {
-                    if (log.isDebugEnabled())
-                        log.debug("Entry with evicted reader was removed [entry=" + entry + ", err=" + e + ']');
-                }
+            try {
+                nearReaderEntry.removeReader(nodeId, updateRes.messageId());
+            }
+            catch (GridCacheEntryRemovedException e) {
+                if (log.isDebugEnabled())
+                    log.debug("Entry with evicted reader was removed [entry=" + nearReaderEntry + ", err=" + e + ']');
             }
         }
 
@@ -432,6 +396,6 @@ public class GridDhtAtomicUpdateFuture extends GridFutureAdapter<Void>
 
     /** {@inheritDoc} */
     @Override public String toString() {
-        return S.toString(GridDhtAtomicUpdateFuture.class, this);
+        return S.toString(GridDhtAtomicSingleUpdateFuture.class, this);
     }
 }
