@@ -191,10 +191,10 @@ class ServerImpl extends TcpDiscoveryImpl {
     private StatisticsPrinter statsPrinter;
 
     /** Failed nodes (but still in topology). */
-    private Collection<TcpDiscoveryNode> failedNodes = new HashSet<>();
+    private final Collection<TcpDiscoveryNode> failedNodes = new HashSet<>();
 
     /** Leaving nodes (but still in topology). */
-    private Collection<TcpDiscoveryNode> leavingNodes = new HashSet<>();
+    private final Collection<TcpDiscoveryNode> leavingNodes = new HashSet<>();
 
     /** If non-shared IP finder is used this flag shows whether IP finder contains local address. */
     private boolean ipFinderHasLocAddr;
@@ -1080,9 +1080,17 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                 openSock = true;
 
+                TcpDiscoveryHandshakeRequest req = new TcpDiscoveryHandshakeRequest(locNodeId);
+
+                if (msg instanceof TcpDiscoveryJoinRequestMessage) {
+                    synchronized (failedNodes) {
+                        for (TcpDiscoveryNode node : failedNodes)
+                            req.addFailedNode(node);
+                    }
+                }
+
                 // Handshake.
-                spi.writeToSocket(sock, new TcpDiscoveryHandshakeRequest(locNodeId), timeoutHelper.nextTimeoutChunk(
-                    spi.getSocketTimeout()));
+                spi.writeToSocket(sock, req, timeoutHelper.nextTimeoutChunk(spi.getSocketTimeout()));
 
                 TcpDiscoveryHandshakeResponse res = spi.readMessage(sock, null, timeoutHelper.nextTimeoutChunk(
                     ackTimeout0));
@@ -1754,6 +1762,25 @@ class ServerImpl extends TcpDiscoveryImpl {
     }
 
     /**
+     * Adds failed nodes specified in the received message to the local failed nodes list.
+     *
+     * @param msg Message.
+     */
+    private void processMessageFailedNodes(TcpDiscoveryAbstractMessage msg) {
+        if (msg.failedNodes() != null) {
+            for (UUID nodeId : msg.failedNodes()) {
+                TcpDiscoveryNode failedNode = ring.node(nodeId);
+
+                if (failedNode != null) {
+                    synchronized (mux) {
+                        failedNodes.add(failedNode);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
      * Discovery messages history used for client reconnect.
      */
     private class EnsuredMessageHistory {
@@ -2135,6 +2162,8 @@ class ServerImpl extends TcpDiscoveryImpl {
 
             spi.stats.onMessageProcessingStarted(msg);
 
+            processMessageFailedNodes(msg);
+
             if (msg instanceof TcpDiscoveryJoinRequestMessage)
                 processJoinRequestMessage((TcpDiscoveryJoinRequestMessage)msg);
 
@@ -2200,6 +2229,8 @@ class ServerImpl extends TcpDiscoveryImpl {
             checkHeartbeatsReceiving();
 
             checkPendingCustomMessages();
+
+            checkFailedNodesList();
         }
 
         /**
@@ -2540,6 +2571,11 @@ class ServerImpl extends TcpDiscoveryImpl {
                                 if (timeoutHelper == null)
                                     timeoutHelper = new IgniteSpiOperationTimeoutHelper(spi);
 
+                                if (!failedNodes.isEmpty()) {
+                                    for (TcpDiscoveryNode node : failedNodes)
+                                        msg.addFailedNode(node);
+                                }
+
                                 writeToSocket(sock, msg, timeoutHelper.nextTimeoutChunk(spi.getSocketTimeout()));
 
                                 spi.stats.onMessageSent(msg, U.currentTimeMillis() - tstamp);
@@ -2679,11 +2715,11 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                         if (log.isDebugEnabled())
                             log.debug("Pending message has been sent to local node [msg=" + msg.id() +
-                                ", pendingMsgId=" + pendingMsg + ", next=" + next.id() + ']');
+                                ", pendingMsgId=" + pendingMsg + ", next=" + (next != null ? next.id() : null) + ']');
 
                         if (debugMode)
                             debugLog("Pending message has been sent to local node [msg=" + msg.id() +
-                                ", pendingMsgId=" + pendingMsg + ", next=" + next.id() + ']');
+                                ", pendingMsgId=" + pendingMsg + ", next=" + (next != null ? next.id() : null) + ']');
                     }
                 }
 
@@ -3447,6 +3483,9 @@ class ServerImpl extends TcpDiscoveryImpl {
                             spi.gridStartTime = msg.gridStartTime();
 
                             for (TcpDiscoveryNode n : top) {
+                                assert n.internalOrder() < node.internalOrder() :
+                                    "Invalid node [topNode=" + n + ", added=" + node + ']';
+
                                 // Make all preceding nodes and local node visible.
                                 n.visible(true);
                             }
@@ -3500,6 +3539,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                     for (Map.Entry<UUID, Map<Integer, byte[]>> entry : dataMap.entrySet())
                         spi.onExchange(node.id(), entry.getKey(), entry.getValue(), U.gridClassLoader());
                 }
+
+                processMessageFailedNodes(msg);
             }
 
             if (sendMessageToRemotes(msg))
@@ -4053,7 +4094,7 @@ class ServerImpl extends TcpDiscoveryImpl {
                                         onException("Failed to respond to status check message (connection refused) " +
                                             "[recipient=" + msg.creatorNodeId() + ", status=" + msg.status() + ']', e);
                                     }
-                                    else {
+                                    else if (!spi.isNodeStopping0()){
                                         if (pingNode(msg.creatorNode()))
                                             // Node exists and accepts incoming connections.
                                             U.error(log, "Failed to respond to status check message [recipient=" +
@@ -4441,6 +4482,34 @@ class ServerImpl extends TcpDiscoveryImpl {
         }
 
         /**
+         * Checks failed nodes list and sends {@link TcpDiscoveryNodeFailedMessage} if failed node
+         * is still in the ring.
+         */
+        private void checkFailedNodesList() {
+            List<TcpDiscoveryNodeFailedMessage> msgs = null;
+
+            synchronized (mux) {
+                for (Iterator<TcpDiscoveryNode> it = failedNodes.iterator(); it.hasNext();) {
+                    TcpDiscoveryNode node = it.next();
+
+                    if (ring.node(node.id()) != null) {
+                        if (msgs == null)
+                            msgs = new ArrayList<>(failedNodes.size());
+
+                        msgs.add(new TcpDiscoveryNodeFailedMessage(getLocalNodeId(), node.id(), node.internalOrder()));
+                    }
+                    else
+                        it.remove();
+                }
+            }
+
+            if (msgs != null) {
+                for (TcpDiscoveryNodeFailedMessage msg : msgs)
+                    addMessage(msg);
+            }
+        }
+
+        /**
          * Checks and flushes custom event messages if no nodes are attempting to join the grid.
          */
         private void checkPendingCustomMessages() {
@@ -4640,9 +4709,9 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                     synchronized (mux) {
                         readers.add(reader);
-
-                        reader.start();
                     }
+
+                    reader.start();
 
                     spi.stats.onServerSocketInitialized(U.currentTimeMillis() - tstamp);
                 }
@@ -4791,6 +4860,13 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                     // Handshake.
                     TcpDiscoveryHandshakeRequest req = (TcpDiscoveryHandshakeRequest)msg;
+
+                    if (req.failedNodes() != null && req.failedNodes().contains(getLocalNodeId())) {
+                        if (log.isDebugEnabled())
+                            log.debug("Ignore handshake request, local node is in failed list: " + req);
+
+                        return;
+                    }
 
                     UUID nodeId = req.creatorNodeId();
 

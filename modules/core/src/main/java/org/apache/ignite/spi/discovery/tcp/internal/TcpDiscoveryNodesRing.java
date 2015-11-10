@@ -451,7 +451,7 @@ public class TcpDiscoveryNodesRing {
      * topology contains less than two nodes.
      */
     @Nullable public TcpDiscoveryNode nextNode(@Nullable Collection<TcpDiscoveryNode> excluded) {
-        assert excluded == null || excluded.isEmpty() || !excluded.contains(locNode);
+        assert excluded == null || excluded.isEmpty() || !excluded.contains(locNode) : excluded;
 
         rwLock.readLock().lock();
 
