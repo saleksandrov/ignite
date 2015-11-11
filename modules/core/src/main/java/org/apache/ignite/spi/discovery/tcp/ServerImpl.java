@@ -3476,6 +3476,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                         spi.onExchange(node.id(), node.id(), data, U.gridClassLoader());
 
                     msg.addDiscoveryData(locNodeId, spi.collectExchangeData(node.id()));
+
+                    processMessageFailedNodes(msg);
                 }
 
                 if (log.isDebugEnabled())
@@ -4107,7 +4109,7 @@ class ServerImpl extends TcpDiscoveryImpl {
                                         onException("Failed to respond to status check message (connection refused) " +
                                             "[recipient=" + msg.creatorNodeId() + ", status=" + msg.status() + ']', e);
                                     }
-                                    else if (!spi.isNodeStopping0()){
+                                    else if (!spi.isNodeStopping0()) {
                                         if (pingNode(msg.creatorNode()))
                                             // Node exists and accepts incoming connections.
                                             U.error(log, "Failed to respond to status check message [recipient=" +
