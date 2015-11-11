@@ -1082,18 +1082,31 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                 TcpDiscoveryHandshakeRequest req = new TcpDiscoveryHandshakeRequest(locNodeId);
 
-                if (msg instanceof TcpDiscoveryJoinRequestMessage) {
-                    synchronized (failedNodes) {
-                        for (TcpDiscoveryNode node : failedNodes)
-                            req.addFailedNode(node);
-                    }
-                }
-
                 // Handshake.
                 spi.writeToSocket(sock, req, timeoutHelper.nextTimeoutChunk(spi.getSocketTimeout()));
 
                 TcpDiscoveryHandshakeResponse res = spi.readMessage(sock, null, timeoutHelper.nextTimeoutChunk(
                     ackTimeout0));
+
+                if (msg instanceof TcpDiscoveryJoinRequestMessage) {
+                    boolean ignore = false;
+
+                    synchronized (failedNodes) {
+                        for (TcpDiscoveryNode failedNode : failedNodes) {
+                            if (failedNode.id().equals(res.creatorNodeId())) {
+                                if (log.isDebugEnabled())
+                                    log.debug("Ignore response from node from failed list: " + res);
+
+                                ignore = true;
+
+                                break;
+                            }
+                        }
+                    }
+
+                    if (ignore)
+                        break;
+                }
 
                 if (locNodeId.equals(res.creatorNodeId())) {
                     if (log.isDebugEnabled())
@@ -4860,13 +4873,6 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                     // Handshake.
                     TcpDiscoveryHandshakeRequest req = (TcpDiscoveryHandshakeRequest)msg;
-
-                    if (req.failedNodes() != null && req.failedNodes().contains(getLocalNodeId())) {
-                        if (log.isDebugEnabled())
-                            log.debug("Ignore handshake request, local node is in failed list: " + req);
-
-                        return;
-                    }
 
                     UUID nodeId = req.creatorNodeId();
 
