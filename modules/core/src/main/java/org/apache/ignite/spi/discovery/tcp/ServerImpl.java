@@ -2608,7 +2608,7 @@ class ServerImpl extends TcpDiscoveryImpl {
                                     for (TcpDiscoveryNode failedNode : failedNodes) {
                                         assert !failedNode.equals(next) : failedNode;
 
-                                        msg.addFailedNode(failedNode);
+                                        msg.addFailedNode(failedNode.id());
                                     }
                                 }
 
@@ -3814,7 +3814,7 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                 interruptPing(leavingNode);
 
-                assert leftNode != null;
+                assert leftNode != null : msg;
 
                 if (log.isDebugEnabled())
                     log.debug("Removed node from topology: " + leftNode);
@@ -4119,32 +4119,46 @@ class ServerImpl extends TcpDiscoveryImpl {
                                     return;
                                 }
 
+                                TcpDiscoveryStatusCheckMessage msg0 = msg;
+
+                                if (F.contains(msg.failedNodes(), msg.creatorNodeId())) {
+                                    msg0 = new TcpDiscoveryStatusCheckMessage(msg);
+
+                                    msg0.failedNodes(null);
+
+                                    for (UUID failedNodeId : msg.failedNodes()) {
+                                        if (!failedNodeId.equals(msg.creatorNodeId()))
+                                            msg0.addFailedNode(failedNodeId);
+                                    }
+                                }
+
                                 try {
-                                    trySendMessageDirectly(msg.creatorNode(), msg);
+                                    trySendMessageDirectly(msg0.creatorNode(), msg0);
 
                                     if (log.isDebugEnabled())
                                         log.debug("Responded to status check message " +
-                                            "[recipient=" + msg.creatorNodeId() + ", status=" + msg.status() + ']');
+                                            "[recipient=" + msg0.creatorNodeId() + ", status=" + msg0.status() + ']');
                                 }
                                 catch (IgniteSpiException e) {
                                     if (e.hasCause(SocketException.class)) {
                                         if (log.isDebugEnabled())
                                             log.debug("Failed to respond to status check message (connection " +
-                                                "refused) [recipient=" + msg.creatorNodeId() + ", status=" +
-                                                msg.status() + ']');
+                                                "refused) [recipient=" + msg0.creatorNodeId() + ", status=" +
+                                                msg0.status() + ']');
 
                                         onException("Failed to respond to status check message (connection refused) " +
-                                            "[recipient=" + msg.creatorNodeId() + ", status=" + msg.status() + ']', e);
+                                            "[recipient=" + msg0.creatorNodeId() + ", status=" + msg0.status() + ']', e);
                                     }
                                     else if (!spi.isNodeStopping0()) {
-                                        if (pingNode(msg.creatorNode()))
+                                        if (pingNode(msg0.creatorNode()))
                                             // Node exists and accepts incoming connections.
                                             U.error(log, "Failed to respond to status check message [recipient=" +
-                                                msg.creatorNodeId() + ", status=" + msg.status() + ']', e);
-                                        else if (log.isDebugEnabled())
-                                            log.debug("Failed to respond to status check message (did the node " +
-                                                "stop?) [recipient=" + msg.creatorNodeId() + ", status=" + msg.status()
-                                                + ']');
+                                                msg0.creatorNodeId() + ", status=" + msg0.status() + ']', e);
+                                        else if (log.isDebugEnabled()) {
+                                            log.debug("Failed to respond to status check message (did the node stop?)" +
+                                                "[recipient=" + msg0.creatorNodeId() +
+                                                ", status=" + msg0.status() + ']');
+                                        }
                                     }
                                 }
                             }

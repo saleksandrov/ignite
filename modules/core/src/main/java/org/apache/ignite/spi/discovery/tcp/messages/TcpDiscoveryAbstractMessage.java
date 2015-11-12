@@ -249,15 +249,22 @@ public abstract class TcpDiscoveryAbstractMessage implements Serializable {
     /**
      * Adds node ID to the failed nodes list.
      *
-     * @param node Node.
+     * @param nodeId Node ID.
      */
-    public void addFailedNode(TcpDiscoveryNode node) {
-        assert node != null;
+    public void addFailedNode(UUID nodeId) {
+        assert nodeId != null;
 
         if (failedNodes == null)
             failedNodes = new HashSet<>();
 
-        failedNodes.add(node.id());
+        failedNodes.add(nodeId);
+    }
+
+    /**
+     * @param failedNodes Failed nodes.
+     */
+    public void failedNodes(@Nullable Set<UUID> failedNodes) {
+        this.failedNodes = failedNodes;
     }
 
     /**
