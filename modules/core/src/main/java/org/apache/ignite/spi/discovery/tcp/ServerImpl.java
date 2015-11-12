@@ -4510,7 +4510,7 @@ class ServerImpl extends TcpDiscoveryImpl {
                         if (nextMsg != null) {
                             try {
                                 TcpDiscoveryCustomEventMessage ackMsg = new TcpDiscoveryCustomEventMessage(
-                                    msg.creatorNodeId(), nextMsg, spi.marsh.marshal(nextMsg));
+                                    getLocalNodeId(), nextMsg, spi.marsh.marshal(nextMsg));
 
                                 ackMsg.topologyVersion(msg.topologyVersion());
 
