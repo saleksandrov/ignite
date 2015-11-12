@@ -219,7 +219,7 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
     /**
      * @throws Exception If any error occurs.
      */
-    public void _testMultiThreadedServersRestart() throws Throwable {
+    public void testMultiThreadedServersRestart() throws Throwable {
         multiThreadedClientsServersRestart(GRID_CNT * 2, 0);
     }
 
@@ -332,6 +332,8 @@ public class TcpDiscoveryMultiThreadedTest extends GridCommonAbstractTest {
 
                             while (!done.get() && error.get() == null) {
                                 int stopIdx = srvStopIdxs.take();
+
+                                U.sleep(50);
 
                                 Thread.currentThread().setName("stop-server-" + getTestGridName(stopIdx));
 

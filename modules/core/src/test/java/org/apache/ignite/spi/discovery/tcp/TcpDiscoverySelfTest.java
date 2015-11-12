@@ -51,6 +51,8 @@ import org.apache.ignite.events.EventType;
 import org.apache.ignite.internal.IgniteEx;
 import org.apache.ignite.internal.IgniteInternalFuture;
 import org.apache.ignite.internal.IgniteKernal;
+import org.apache.ignite.internal.managers.discovery.DiscoveryCustomMessage;
+import org.apache.ignite.internal.processors.continuous.StartRoutineAckDiscoveryMessage;
 import org.apache.ignite.internal.processors.port.GridPortRecord;
 import org.apache.ignite.internal.util.io.GridByteArrayOutputStream;
 import org.apache.ignite.internal.util.lang.GridAbsPredicate;
@@ -58,6 +60,7 @@ import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.G;
 import org.apache.ignite.internal.util.typedef.X;
 import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.lang.IgniteBiPredicate;
 import org.apache.ignite.lang.IgniteInClosure;
 import org.apache.ignite.lang.IgnitePredicate;
 import org.apache.ignite.spi.IgniteSpiException;
@@ -110,7 +113,6 @@ public class TcpDiscoverySelfTest extends GridCommonAbstractTest {
     }
 
     /** {@inheritDoc} */
-    @SuppressWarnings({"IfMayBeConditional", "deprecation"})
     @Override protected IgniteConfiguration getConfiguration(String gridName) throws Exception {
         IgniteConfiguration cfg = super.getConfiguration(gridName);
 
@@ -1607,6 +1609,34 @@ public class TcpDiscoverySelfTest extends GridCommonAbstractTest {
     }
 
     /**
+     * @throws Exception If failed.
+     */
+    public void testCustomEventAckNotSend() throws Exception {
+        try {
+            TestCustomerEventAckSpi spi0 = new TestCustomerEventAckSpi();
+
+            nodeSpi.set(spi0);
+
+            Ignite ignite0 = startGrid(0);
+
+            nodeSpi.set(new TestCustomerEventAckSpi());
+
+            Ignite ignite1 = startGrid(1);
+
+            spi0.stopBeforeSndAck = true;
+
+            ignite1.message().remoteListen("test", new DummyPredicate());
+
+            waitNodeStop(ignite0.name());
+
+            startGrid(2);
+        }
+        finally {
+            stopAllGrids();
+        }
+    }
+
+    /**
      * @param nodeName Node name.
      * @throws Exception If failed.
      */
@@ -1648,6 +1678,60 @@ public class TcpDiscoverySelfTest extends GridCommonAbstractTest {
             log.info("Try create cache [node=" + ignite.name() + ", cache=" + ccfg.getName() + ']');
 
             ignite.getOrCreateCache(ccfg).put(1, 1);
+        }
+    }
+
+    /**
+     *
+     */
+    static class DummyPredicate implements IgniteBiPredicate<UUID, Object> {
+        /** {@inheritDoc} */
+        @Override public boolean apply(UUID uuid, Object o) {
+            return true;
+        }
+    }
+
+    /**
+     *
+     */
+    private static class TestCustomerEventAckSpi extends TcpDiscoverySpi {
+        /** */
+        private volatile boolean stopBeforeSndAck;
+
+        /** {@inheritDoc} */
+        @Override protected void writeToSocket(Socket sock,
+            TcpDiscoveryAbstractMessage msg,
+            GridByteArrayOutputStream bout,
+            long timeout) throws IOException, IgniteCheckedException {
+            if (stopBeforeSndAck) {
+                if (msg instanceof TcpDiscoveryCustomEventMessage) {
+                    try {
+                        DiscoveryCustomMessage custMsg = GridTestUtils.getFieldValue(
+                            ((TcpDiscoveryCustomEventMessage)msg).message(marsh), "delegate");
+
+                        if (custMsg instanceof StartRoutineAckDiscoveryMessage) {
+                            log.info("Skip message send and stop node: " + msg);
+
+                            sock.close();
+
+                            GridTestUtils.runAsync(new Callable<Object>() {
+                                @Override public Object call() throws Exception {
+                                    ignite.close();
+
+                                    return null;
+                                }
+                            }, "stop-node");
+
+                            return;
+                        }
+                    }
+                    catch (Throwable e) {
+                        fail("Unexpected error: " + e);
+                    }
+                }
+            }
+
+            super.writeToSocket(sock, msg, bout, timeout);
         }
     }
 
