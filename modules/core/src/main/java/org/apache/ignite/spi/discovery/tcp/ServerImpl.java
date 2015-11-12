@@ -2338,7 +2338,7 @@ class ServerImpl extends TcpDiscoveryImpl {
                     if (debugMode)
                         debugLog(msg, "No next node in topology.");
 
-                    if (ring.hasRemoteNodes() && !(msg instanceof TcpDiscoveryConnectionCheckMessage) &&
+                    if (ring.hasRemoteNodes(failedNodes) && !(msg instanceof TcpDiscoveryConnectionCheckMessage) &&
                         !(msg instanceof TcpDiscoveryStatusCheckMessage && msg.creatorNodeId().equals(locNodeId))) {
                         msg.senderNodeId(locNodeId);
 
