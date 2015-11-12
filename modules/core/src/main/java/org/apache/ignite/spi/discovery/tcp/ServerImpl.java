@@ -1125,7 +1125,7 @@ class ServerImpl extends TcpDiscoveryImpl {
                 spi.stats.onMessageSent(msg, U.currentTimeMillis() - tstamp);
 
                 if (debugMode)
-                    debugLog("Message has been sent directly to address [msg=" + msg + ", addr=" + addr +
+                    debugLog(msg, "Message has been sent directly to address [msg=" + msg + ", addr=" + addr +
                         ", rmtNodeId=" + res.creatorNodeId() + ']');
 
                 if (log.isDebugEnabled())
@@ -2173,7 +2173,7 @@ class ServerImpl extends TcpDiscoveryImpl {
                 log.debug("Processing message [cls=" + msg.getClass().getSimpleName() + ", id=" + msg.id() + ']');
 
             if (debugMode)
-                debugLog("Processing message [cls=" + msg.getClass().getSimpleName() + ", id=" + msg.id() + ']');
+                debugLog(msg, "Processing message [cls=" + msg.getClass().getSimpleName() + ", id=" + msg.id() + ']');
 
             if (locNode.internalOrder() == 0) {
                 boolean process = false;
@@ -2336,7 +2336,7 @@ class ServerImpl extends TcpDiscoveryImpl {
                         log.debug("No next node in topology.");
 
                     if (debugMode)
-                        debugLog("No next node in topology.");
+                        debugLog(msg, "No next node in topology.");
 
                     if (ring.hasRemoteNodes() && !(msg instanceof TcpDiscoveryConnectionCheckMessage) &&
                         !(msg instanceof TcpDiscoveryStatusCheckMessage && msg.creatorNodeId().equals(locNodeId))) {
@@ -2354,7 +2354,7 @@ class ServerImpl extends TcpDiscoveryImpl {
                             ", ring=" + ring + ", failedNodes=" + failedNodes + ']');
 
                     if (debugMode)
-                        debugLog("New next node [newNext=" + newNext + ", formerNext=" + next +
+                        debugLog(msg, "New next node [newNext=" + newNext + ", formerNext=" + next +
                             ", ring=" + ring + ", failedNodes=" + failedNodes + ']');
 
                     U.closeQuiet(sock);
@@ -2441,8 +2441,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                                             "expected [expectedId=" + next.id() + ", rcvdId=" + nextId + ']');
 
                                     if (debugMode)
-                                        debugLog("Failed to restore ring because next node ID received is not as " +
-                                            "expected [expectedId=" + next.id() + ", rcvdId=" + nextId + ']');
+                                        debugLog(msg, "Failed to restore ring because next node ID received is not " +
+                                            "as expected [expectedId=" + next.id() + ", rcvdId=" + nextId + ']');
 
                                     break;
                                 }
@@ -2463,8 +2463,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                                                     ", rcvd=" + nextOrder + ", id=" + next.id() + ']');
 
                                             if (debugMode)
-                                                debugLog("Failed to restore ring because next node order received " +
-                                                    "is not as expected [expected=" + next.internalOrder() +
+                                                debugLog(msg, "Failed to restore ring because next node order " +
+                                                    "received is not as expected [expected=" + next.internalOrder() +
                                                     ", rcvd=" + nextOrder + ", id=" + next.id() + ']');
 
                                             break;
@@ -2475,7 +2475,7 @@ class ServerImpl extends TcpDiscoveryImpl {
                                         log.debug("Initialized connection with next node: " + next.id());
 
                                     if (debugMode)
-                                        debugLog("Initialized connection with next node: " + next.id());
+                                        debugLog(msg, "Initialized connection with next node: " + next.id());
 
                                     errs = null;
 
@@ -2546,7 +2546,7 @@ class ServerImpl extends TcpDiscoveryImpl {
                                         ", forceSndPending=" + forceSndPending + ']');
 
                                 if (debugMode)
-                                    debugLog("Pending messages will be sent [failure=" + failure +
+                                    debugLog(msg, "Pending messages will be sent [failure=" + failure +
                                         ", newNextNode=" + newNextNode +
                                         ", forceSndPending=" + forceSndPending + ']');
 
@@ -2577,7 +2577,7 @@ class ServerImpl extends TcpDiscoveryImpl {
                                             ", res=" + res + ']');
 
                                     if (debugMode)
-                                        debugLog("Pending message has been sent to next node [msgId=" + msg.id() +
+                                        debugLog(msg, "Pending message has been sent to next node [msgId=" + msg.id() +
                                             ", pendingMsgId=" + pendingMsg.id() + ", next=" + next.id() +
                                             ", res=" + res + ']');
 
@@ -2620,15 +2620,17 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                                 onMessageExchanged();
 
-                                if (log.isDebugEnabled())
+                                if (log.isDebugEnabled()) {
                                     log.debug("Message has been sent to next node [msg=" + msg +
                                         ", next=" + next.id() +
                                         ", res=" + res + ']');
+                                }
 
-                                if (debugMode)
-                                    debugLog("Message has been sent to next node [msg=" + msg +
+                                if (debugMode) {
+                                    debugLog(msg, "Message has been sent to next node [msg=" + msg +
                                         ", next=" + next.id() +
                                         ", res=" + res + ']');
+                                }
                             }
                             finally {
                                 clearNodeAddedMessage(msg);
@@ -2741,7 +2743,7 @@ class ServerImpl extends TcpDiscoveryImpl {
                         log.debug("Pending messages will be resent to local node");
 
                     if (debugMode)
-                        debugLog("Pending messages will be resent to local node");
+                        debugLog(msg, "Pending messages will be resent to local node");
 
                     for (TcpDiscoveryAbstractMessage pendingMsg : pendingMsgs) {
                         prepareNodeAddedMessage(pendingMsg, locNodeId, pendingMsgs.msgs, pendingMsgs.discardId,
@@ -2755,9 +2757,10 @@ class ServerImpl extends TcpDiscoveryImpl {
                             log.debug("Pending message has been sent to local node [msg=" + msg.id() +
                                 ", pendingMsgId=" + pendingMsg + ']');
 
-                        if (debugMode)
-                            debugLog("Pending message has been sent to local node [msg=" + msg.id() +
+                        if (debugMode) {
+                            debugLog(msg, "Pending message has been sent to local node [msg=" + msg.id() +
                                 ", pendingMsgId=" + pendingMsg + ']');
+                        }
                     }
                 }
 
@@ -3391,15 +3394,17 @@ class ServerImpl extends TcpDiscoveryImpl {
                 if (sendMessageToRemotes(msg))
                     sendMessageAcrossRing(msg);
 
-                if (log.isDebugEnabled())
+                if (log.isDebugEnabled()) {
                     log.debug("Local node already has node being added. Passing TcpDiscoveryNodeAddedMessage to " +
-                                  "coordinator for final processing [ring=" + ring + ", node=" + node + ", locNode="
-                                  + locNode + ", msg=" + msg + ']');
+                        "coordinator for final processing [ring=" + ring + ", node=" + node + ", locNode="
+                        + locNode + ", msg=" + msg + ']');
+                }
 
-                if (debugMode)
-                    debugLog("Local node already has node being added. Passing TcpDiscoveryNodeAddedMessage to " +
-                                 "coordinator for final processing [ring=" + ring + ", node=" + node + ", locNode="
-                                 + locNode + ", msg=" + msg + ']');
+                if (debugMode) {
+                    debugLog(msg, "Local node already has node being added. Passing TcpDiscoveryNodeAddedMessage to " +
+                        "coordinator for final processing [ring=" + ring + ", node=" + node + ", locNode="
+                        + locNode + ", msg=" + msg + ']');
+                }
 
                 return;
             }
@@ -3412,7 +3417,7 @@ class ServerImpl extends TcpDiscoveryImpl {
                             ", msg=" + msg + ']');
 
                     if (debugMode)
-                        debugLog("Discarding node added message since new node's order is less than " +
+                        debugLog(msg, "Discarding node added message since new node's order is less than " +
                             "max order in ring [ring=" + ring + ", node=" + node + ", locNode=" + locNode +
                             ", msg=" + msg + ']');
 
@@ -4996,9 +5001,10 @@ class ServerImpl extends TcpDiscoveryImpl {
                         log.debug("Initialized connection with remote node [nodeId=" + nodeId +
                             ", client=" + req.client() + ']');
 
-                    if (debugMode)
-                        debugLog("Initialized connection with remote node [nodeId=" + nodeId +
+                    if (debugMode) {
+                        debugLog(msg, "Initialized connection with remote node [nodeId=" + nodeId +
                             ", client=" + req.client() + ']');
+                    }
                 }
                 catch (IOException e) {
                     if (log.isDebugEnabled())
@@ -5067,7 +5073,7 @@ class ServerImpl extends TcpDiscoveryImpl {
                         spi.stats.onMessageReceived(msg);
 
                         if (debugMode && recordable(msg))
-                            debugLog("Message has been received: " + msg);
+                            debugLog(msg, "Message has been received: " + msg);
 
                         if (msg instanceof TcpDiscoveryConnectionCheckMessage) {
                             spi.writeToSocket(msg, sock, RES_OK, socketTimeout);
