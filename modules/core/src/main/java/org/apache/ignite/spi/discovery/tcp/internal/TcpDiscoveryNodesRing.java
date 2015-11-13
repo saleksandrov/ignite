@@ -170,22 +170,6 @@ public class TcpDiscoveryNodesRing {
     }
 
     /**
-     * @param excluded Nodes to exclude from the search.
-     *
-     * @return {@code True} if the topology has remote nodes in.
-     */
-    public boolean hasRemoteNodes(Collection<TcpDiscoveryNode> excluded) {
-        rwLock.readLock().lock();
-
-        try {
-            return serverNodes(excluded).size() > 1;
-        }
-        finally {
-            rwLock.readLock().unlock();
-        }
-    }
-
-    /**
      * Checks whether the topology has remote server nodes in.
      *
      * @return {@code true} if the topology has remote server nodes in.
