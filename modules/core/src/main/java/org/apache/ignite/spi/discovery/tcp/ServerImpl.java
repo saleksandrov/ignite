@@ -2543,7 +2543,12 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                             assert !forceSndPending || msg instanceof TcpDiscoveryNodeLeftMessage;
 
-                            if (newNextNode || failure || forceSndPending) {
+                            boolean sndPending=
+                                (newNextNode && ring.minimumNodeVersion().compareTo(CUSTOM_MSG_ALLOW_JOINING_FOR_VERIFIED_SINCE) >= 0) ||
+                                failure ||
+                                forceSndPending;
+
+                            if (sndPending) {
                                 if (log.isDebugEnabled())
                                     log.debug("Pending messages will be sent [failure=" + failure +
                                         ", newNextNode=" + newNextNode +
@@ -4475,7 +4480,7 @@ class ServerImpl extends TcpDiscoveryImpl {
                 assert ring.minimumNodeVersion() != null : ring;
 
                 if (ring.minimumNodeVersion().compareTo(CUSTOM_MSG_ALLOW_JOINING_FOR_VERIFIED_SINCE) >= 0)
-                    delayMsg = !joiningNodes.isEmpty();
+                    delayMsg = msg.topologyVersion() == 0L && !joiningNodes.isEmpty();
                 else
                     delayMsg = !joiningNodes.isEmpty();
 
