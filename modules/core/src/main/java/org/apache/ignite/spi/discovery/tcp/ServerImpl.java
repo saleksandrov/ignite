@@ -160,7 +160,7 @@ class ServerImpl extends TcpDiscoveryImpl {
 
     /** */
     private static final IgniteProductVersion CUSTOM_MSG_ALLOW_JOINING_FOR_VERIFIED_SINCE =
-            IgniteProductVersion.fromString("1.5.0");
+        IgniteProductVersion.fromString("1.5.0");
 
     /** */
     private final ThreadPoolExecutor utilityPool = new ThreadPoolExecutor(0, 1, 2000, TimeUnit.MILLISECONDS,
@@ -4475,7 +4475,7 @@ class ServerImpl extends TcpDiscoveryImpl {
                 assert ring.minimumNodeVersion() != null : ring;
 
                 if (ring.minimumNodeVersion().compareTo(CUSTOM_MSG_ALLOW_JOINING_FOR_VERIFIED_SINCE) >= 0)
-                    delayMsg = msg.topologyVersion() == 0L && !joiningNodes.isEmpty();
+                    delayMsg = !joiningNodes.isEmpty();
                 else
                     delayMsg = !joiningNodes.isEmpty();
 
@@ -4555,7 +4555,7 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                 if (msg.verified() && state0 == CONNECTED && pendingMsgs.procCustomMsgs.add(msg.id())) {
                     assert msg.topologyVersion() == ring.topologyVersion() :
-                        "msg: " + msg + ", topver=" + ring.topologyVersion();
+                        "msg: " + msg + ", topVer=" + ring.topologyVersion();
 
                     notifyDiscoveryListener(msg);
                 }
