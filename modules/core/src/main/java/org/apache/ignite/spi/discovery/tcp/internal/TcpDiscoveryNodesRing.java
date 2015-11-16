@@ -26,6 +26,7 @@ import org.apache.ignite.internal.util.typedef.PN;
 import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.lang.IgnitePredicate;
+import org.apache.ignite.lang.IgniteProductVersion;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
@@ -88,6 +89,16 @@ public class TcpDiscoveryNodesRing {
     @GridToStringExclude
     private final ReadWriteLock rwLock = new ReentrantReadWriteLock();
 
+    /** */
+    private IgniteProductVersion minNodeVer;
+
+    /**
+     * @return Minimum node version.
+     */
+    public IgniteProductVersion minimumNodeVersion() {
+        return minNodeVer;
+    }
+
     /**
      * Sets local node.
      *
@@ -104,6 +115,8 @@ public class TcpDiscoveryNodesRing {
             clear();
 
             maxInternalOrder = locNode.internalOrder();
+
+            minNodeVer = locNode.version();
         }
         finally {
             rwLock.writeLock().unlock();
@@ -225,6 +238,9 @@ public class TcpDiscoveryNodesRing {
             nodeOrder = node.internalOrder();
 
             maxInternalOrder = node.internalOrder();
+
+            if (node.version().compareTo(minNodeVer) < 0)
+                minNodeVer = node.version();
         }
         finally {
             rwLock.writeLock().unlock();

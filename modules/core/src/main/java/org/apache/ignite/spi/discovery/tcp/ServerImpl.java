@@ -159,6 +159,10 @@ class ServerImpl extends TcpDiscoveryImpl {
     private static final int ENSURED_MSG_HIST_SIZE = getInteger(IGNITE_DISCOVERY_HISTORY_SIZE, 1024 * 10);
 
     /** */
+    private static final IgniteProductVersion CUSTOM_MSG_ALLOW_JOINING_FOR_VERIFIED_SINCE =
+            IgniteProductVersion.fromString("1.5.0");
+
+    /** */
     private final ThreadPoolExecutor utilityPool = new ThreadPoolExecutor(0, 1, 2000, TimeUnit.MILLISECONDS,
         new LinkedBlockingQueue<Runnable>());
 
@@ -4466,7 +4470,16 @@ class ServerImpl extends TcpDiscoveryImpl {
          */
         private void processCustomMessage(TcpDiscoveryCustomEventMessage msg) {
             if (isLocalNodeCoordinator()) {
-                if (msg.topologyVersion() == 0L && !joiningNodes.isEmpty()) {
+                boolean delayMsg;
+
+                assert ring.minimumNodeVersion() != null : ring;
+
+                if (ring.minimumNodeVersion().compareTo(CUSTOM_MSG_ALLOW_JOINING_FOR_VERIFIED_SINCE) >= 0)
+                    delayMsg = msg.topologyVersion() == 0L && !joiningNodes.isEmpty();
+                else
+                    delayMsg = !joiningNodes.isEmpty();
+
+                if (delayMsg) {
                     if (log.isDebugEnabled()) {
                         log.debug("Delay custom message processing, there are joining nodes [msg=" + msg +
                             ", joiningNodes=" + joiningNodes + ']');
