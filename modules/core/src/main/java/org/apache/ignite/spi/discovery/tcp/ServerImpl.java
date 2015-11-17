@@ -1790,9 +1790,14 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                 if (failedNode != null) {
                     if (!failedNode.isLocal()) {
+                        boolean added;
+
                         synchronized (mux) {
-                            failedNodes.add(failedNode);
+                            added = failedNodes.add(failedNode);
                         }
+
+                        if (added && log.isDebugEnabled())
+                            log.debug("Added node to failed nodes list [node=" + failedNode + ", msg=" + msg + ']');
                     }
                 }
             }
@@ -4593,8 +4598,12 @@ class ServerImpl extends TcpDiscoveryImpl {
             }
 
             if (msgs != null) {
-                for (TcpDiscoveryNodeFailedMessage msg : msgs)
+                for (TcpDiscoveryNodeFailedMessage msg : msgs) {
+                    if (log.isDebugEnabled())
+                        log.debug("Add node failed message for node from failed nodes list: " + msg);
+
                     addMessage(msg);
+                }
             }
         }
 
