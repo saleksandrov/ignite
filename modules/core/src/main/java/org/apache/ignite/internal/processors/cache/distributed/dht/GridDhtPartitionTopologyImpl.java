@@ -1355,7 +1355,7 @@ class GridDhtPartitionTopologyImpl implements GridDhtPartitionTopology {
                 List<ClusterNode> affNodes = cctx.affinity().nodes(i, topVer);
 
                 // Topology doesn't contain server nodes (just clients).
-                if (affNodes.isEmpty())
+                if (affNodes.isEmpty() || (node2part != null && !node2part.valid()))
                     continue;
 
                 List<ClusterNode> owners = owners(i);

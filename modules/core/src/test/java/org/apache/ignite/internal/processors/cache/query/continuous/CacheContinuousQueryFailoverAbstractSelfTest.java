@@ -271,15 +271,6 @@ public abstract class CacheContinuousQueryFailoverAbstractSelfTest extends GridC
         waitRebalanceFinished(ignite0, 5);
         waitRebalanceFinished(ignite2, 5);
         waitRebalanceFinished(ignite3, 5);
-
-        stopGrid(3);
-
-        assertTrue(top0.rebalanceFinished(new AffinityTopologyVersion(6)));
-        assertTrue(top2.rebalanceFinished(new AffinityTopologyVersion(6)));
-
-        stopGrid(0);
-
-        waitRebalanceFinished(ignite2, 7);
     }
 
     /**
