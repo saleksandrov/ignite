@@ -216,8 +216,7 @@ public class IgniteTxHandler {
             req.reads(),
             req.writes(),
             req.transactionNodes(),
-            req.last(),
-            req.lastBackups());
+            req.last());
 
         if (locTx.isRollbackOnly())
             locTx.rollbackAsync();
@@ -398,7 +397,6 @@ public class IgniteTxHandler {
 
             if (req.onePhaseCommit()) {
                 assert req.last();
-                assert F.isEmpty(req.lastBackups()) || req.lastBackups().size() <= 1;
 
                 tx.onePhaseCommit(true);
             }
@@ -413,8 +411,7 @@ public class IgniteTxHandler {
                 req.messageId(),
                 req.miniId(),
                 req.transactionNodes(),
-                req.last(),
-                req.lastBackups());
+                req.last());
 
             if (tx.isRollbackOnly()) {
                 try {
@@ -1094,12 +1091,13 @@ public class IgniteTxHandler {
             GridDhtTxRemote tx = ctx.tm().tx(req.version());
 
             if (tx == null) {
+                boolean single = req.last() && req.writes().size() == 1;
+
                 tx = new GridDhtTxRemote(
                     ctx,
                     req.nearNodeId(),
                     req.futureId(),
                     nodeId,
-                    req.threadId(),
                     req.topologyVersion(),
                     req.version(),
                     null,
@@ -1113,7 +1111,8 @@ public class IgniteTxHandler {
                     req.nearXidVersion(),
                     req.transactionNodes(),
                     req.subjectId(),
-                    req.taskNameHash());
+                    req.taskNameHash(),
+                    single);
 
                 tx.writeVersion(req.writeVersion());
 
@@ -1141,7 +1140,7 @@ public class IgniteTxHandler {
                 tx.transactionNodes(req.transactionNodes());
             }
 
-            if (!tx.isSystemInvalidate() && !F.isEmpty(req.writes())) {
+            if (!tx.isSystemInvalidate()) {
                 int idx = 0;
 
                 for (IgniteTxEntry entry : req.writes()) {
@@ -1239,7 +1238,6 @@ public class IgniteTxHandler {
                     ldr,
                     nodeId,
                     req.nearNodeId(),
-                    req.threadId(),
                     req.version(),
                     null,
                     req.system(),
