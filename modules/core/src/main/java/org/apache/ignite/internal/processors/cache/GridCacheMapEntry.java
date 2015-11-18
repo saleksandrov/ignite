@@ -1190,7 +1190,8 @@ public abstract class GridCacheMapEntry extends GridMetadataAwareAdapter impleme
 
             if (cctx.isLocal() || cctx.isReplicated() ||
                 (!isNear() && !(tx != null && tx.onePhaseCommit() && !tx.local())))
-                cctx.continuousQueries().onEntryUpdated(this, key, val, old, tx.local(), false, updateCntr0, topVer);
+                cctx.continuousQueries().onEntryUpdated(key, val, old, isInternal() || !context().userCache(),
+                    partition(), tx.local(), false, updateCntr0, topVer);
 
             cctx.dataStructures().onEntryUpdated(key, false);
         }
@@ -1369,7 +1370,8 @@ public abstract class GridCacheMapEntry extends GridMetadataAwareAdapter impleme
 
             if (cctx.isLocal() || cctx.isReplicated() ||
                 (!isNear() && !(tx != null && tx.onePhaseCommit() && !tx.local())))
-                cctx.continuousQueries().onEntryUpdated(this, key, null, old, tx.local(), false, updateCntr0, topVer);
+                cctx.continuousQueries().onEntryUpdated(key, null, old, isInternal()
+                    || !context().userCache(),partition(), tx.local(), false, updateCntr0, topVer);
 
             cctx.dataStructures().onEntryUpdated(key, true);
 
@@ -1707,8 +1709,8 @@ public abstract class GridCacheMapEntry extends GridMetadataAwareAdapter impleme
             if (!isNear()) {
                 long updateCntr = nextPartCounter(AffinityTopologyVersion.NONE);
 
-                cctx.continuousQueries().onEntryUpdated(this, key, val, old, true, false, updateCntr,
-                    AffinityTopologyVersion.NONE);
+                cctx.continuousQueries().onEntryUpdated(key, val, old, isInternal() || !context().userCache(),
+                    partition(), true, false, updateCntr, AffinityTopologyVersion.NONE);
             }
 
             cctx.dataStructures().onEntryUpdated(key, op == GridCacheOperation.DELETE);
@@ -1967,9 +1969,8 @@ public abstract class GridCacheMapEntry extends GridMetadataAwareAdapter impleme
                             if (updateCntr != null)
                                 updateCntr0 = updateCntr;
 
-                            cctx.continuousQueries().onEntryUpdated(GridCacheMapEntry.this, key, evtVal,
-                                    prevVal, primary, false, updateCntr0, topVer);
-                        }
+                            cctx.continuousQueries().onEntryUpdated(key, evtVal, prevVal, isInternal()
+                                || !context().userCache(), partition(), primary, false, updateCntr0, topVer);                        }
 
                         return new GridCacheUpdateAtomicResult(false,
                             retval ? rawGetOrUnmarshalUnlocked(false) : null,
@@ -3227,7 +3228,8 @@ public abstract class GridCacheMapEntry extends GridMetadataAwareAdapter impleme
                 drReplicate(drType, val, ver);
 
                 if (!skipQryNtf) {
-                    cctx.continuousQueries().onEntryUpdated(this, key, val, null, true, preload, updateCntr, topVer);
+                    cctx.continuousQueries().onEntryUpdated(key, val, null, this.isInternal()
+                        || !this.context().userCache(), this.partition(), true, preload, updateCntr, topVer);
 
                     cctx.dataStructures().onEntryUpdated(key, false);
                 }

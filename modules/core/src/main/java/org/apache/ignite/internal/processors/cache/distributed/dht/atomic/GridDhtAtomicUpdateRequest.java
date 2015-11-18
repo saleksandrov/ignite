@@ -147,6 +147,16 @@ public class GridDhtAtomicUpdateRequest extends GridCacheMessage implements Grid
     /** Partition. */
     private GridLongList updateCntrs;
 
+    /** On response flag. Access should be synced on future. */
+    @GridDirectTransient
+    private boolean onRes;
+
+    @GridDirectTransient
+    private List<Integer> partIds;
+
+    @GridDirectTransient
+    private List<CacheObject> localPrevVals;
+
     /**
      * Empty constructor required by {@link Externalizable}.
      */
@@ -197,6 +207,8 @@ public class GridDhtAtomicUpdateRequest extends GridCacheMessage implements Grid
         this.addDepInfo = addDepInfo;
 
         keys = new ArrayList<>();
+        partIds = new ArrayList<>();
+        localPrevVals = new ArrayList<>();
 
         if (forceTransformBackups) {
             entryProcessors = new ArrayList<>();
@@ -230,9 +242,14 @@ public class GridDhtAtomicUpdateRequest extends GridCacheMessage implements Grid
         long conflictExpireTime,
         @Nullable GridCacheVersion conflictVer,
         boolean addPrevVal,
+        int partId,
         @Nullable CacheObject prevVal,
         @Nullable Long updateIdx) {
         keys.add(key);
+
+        partIds.add(partId);
+
+        localPrevVals.add(prevVal);
 
         if (forceTransformBackups) {
             assert entryProcessor != null;
@@ -306,8 +323,7 @@ public class GridDhtAtomicUpdateRequest extends GridCacheMessage implements Grid
         @Nullable CacheObject val,
         EntryProcessor<Object, Object, Object> entryProcessor,
         long ttl,
-        long expireTime)
-    {
+        long expireTime) {
         if (nearKeys == null) {
             nearKeys = new ArrayList<>();
 
@@ -438,12 +454,20 @@ public class GridDhtAtomicUpdateRequest extends GridCacheMessage implements Grid
     }
 
     /**
-     * @param idx Counter index.
+     * @param idx Partition index.
+     * @return Partition id.
+     */
+    public int partitionId(int idx) {
+        return partIds.get(idx);
+    }
+
+    /**
+     * @param updCntr Update counter.
      * @return Update counter.
      */
-    public Long updateIdx(int idx) {
-        if (updateCntrs != null && idx < updateCntrs.size())
-            return updateCntrs.get(idx);
+    public Long updateCounter(int updCntr) {
+        if (updateCntrs != null && updCntr < updateCntrs.size())
+            return updateCntrs.get(updCntr);
 
         return null;
     }
@@ -476,6 +500,14 @@ public class GridDhtAtomicUpdateRequest extends GridCacheMessage implements Grid
             return prevVals.get(idx);
 
         return null;
+    }
+
+    /**
+     * @param idx Key index.
+     * @return Value.
+     */
+    @Nullable public CacheObject localPreviousValue(int idx) {
+        return localPrevVals.get(idx);
     }
 
     /**
@@ -576,14 +608,20 @@ public class GridDhtAtomicUpdateRequest extends GridCacheMessage implements Grid
     }
 
     /**
+     * @return {@code True} if on response flag changed.
+     */
+    public boolean onResponse() {
+        return !onRes && (onRes = true);
+    }
+
+    /**
      * @return Optional arguments for entry processor.
      */
     @Nullable public Object[] invokeArguments() {
         return invokeArgs;
     }
 
-    /** {@inheritDoc}
-     * @param ctx*/
+    /** {@inheritDoc} */
     @Override public void prepareMarshal(GridCacheSharedContext ctx) throws IgniteCheckedException {
         super.prepareMarshal(ctx);
 

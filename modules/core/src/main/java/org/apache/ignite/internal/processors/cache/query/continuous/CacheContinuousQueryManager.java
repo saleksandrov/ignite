@@ -183,30 +183,29 @@ public class CacheContinuousQueryManager extends GridCacheManagerAdapter {
     }
 
     /**
-     * @param e Cache entry.
      * @param key Key.
      * @param newVal New value.
      * @param oldVal Old value.
+     * @param internal Internal entry (internal key or not user cache),
      * @param primary {@code True} if called on primary node.
      * @param preload Whether update happened during preloading.
      * @param updateCntr Update counter.
      * @param topVer Topology version.
      * @throws IgniteCheckedException In case of error.
      */
-    public void onEntryUpdated(GridCacheEntryEx e,
+    public void onEntryUpdated(
         KeyCacheObject key,
         CacheObject newVal,
         CacheObject oldVal,
+        boolean internal,
+        int partId,
         boolean primary,
         boolean preload,
         long updateCntr,
         AffinityTopologyVersion topVer)
         throws IgniteCheckedException
     {
-        assert e != null;
         assert key != null;
-
-        boolean internal = e.isInternal() || !e.context().userCache();
 
         if (preload && !internal)
             return;
@@ -257,7 +256,7 @@ public class CacheContinuousQueryManager extends GridCacheManagerAdapter {
                 key,
                 newVal,
                 lsnr.oldValueRequired() ? oldVal : null,
-                e.partition(),
+                partId,
                 updateCntr,
                 topVer);
 

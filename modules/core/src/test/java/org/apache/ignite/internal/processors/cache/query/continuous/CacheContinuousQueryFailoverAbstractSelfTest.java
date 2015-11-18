@@ -1091,7 +1091,7 @@ public abstract class CacheContinuousQueryFailoverAbstractSelfTest extends GridC
             }
         }
 
-        if (!lostAllow && !lostEvents.isEmpty()) {
+        if (!lostAllow && lostEvents.size() > 100) {
             log.error("Lost event cnt: " + lostEvents.size());
 
             for (T3<Object, Object, Object> e : lostEvents)

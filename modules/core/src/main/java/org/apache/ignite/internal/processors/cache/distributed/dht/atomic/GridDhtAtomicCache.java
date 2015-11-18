@@ -1836,8 +1836,9 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
                     }
                 }
                 else if (!entry.isNear() && updRes.success()) {
-                    ctx.continuousQueries().onEntryUpdated(entry, entry.key(), updRes.newValue(), updRes.oldValue(),
-                        primary, false, updRes.updateCounter(), topVer);
+                    ctx.continuousQueries().onEntryUpdated(entry.key(), updRes.newValue(), updRes.oldValue(),
+                        entry.isInternal() || !context().userCache(), entry.partition(), primary, false,
+                        updRes.updateCounter(), topVer);
                 }
 
                 if (hasNear) {
@@ -2525,7 +2526,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
                         CacheObject prevVal = req.previousValue(i);
 
                         EntryProcessor<Object, Object, Object> entryProcessor = req.entryProcessor(i);
-                        Long updateIdx = req.updateIdx(i);
+                        Long updateIdx = req.updateCounter(i);
 
                         GridCacheOperation op = entryProcessor != null ? TRANSFORM :
                             (val != null) ? UPDATE : DELETE;
@@ -2565,8 +2566,9 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
                             ctx.onDeferredDelete(entry, updRes.removeVersion());
 
                         if (updRes.success() && !entry.isNear())
-                            ctx.continuousQueries().onEntryUpdated(entry, entry.key(), updRes.newValue(),
-                                updRes.oldValue(), false, false, updRes.updateCounter(), req.topologyVersion());
+                            ctx.continuousQueries().onEntryUpdated(entry.key(), updRes.newValue(),
+                                updRes.oldValue(), entry.isInternal() || !context().userCache(), entry.partition(),
+                                false, false, updRes.updateCounter(), req.topologyVersion());
 
                         entry.onUnlock();
 
