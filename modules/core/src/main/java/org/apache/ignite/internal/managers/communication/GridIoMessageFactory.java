@@ -709,12 +709,12 @@ public class GridIoMessageFactory implements MessageFactory {
 
                 break;
 
-            case 116:
+            case 118:
                 msg = new CacheContinuousQueryBatchAck();
 
                 break;
 
-            // [-3..116] - this
+            // [-3..118] - this
             // [120..123] - DR
             // [-4..-22] - SQL
             default:

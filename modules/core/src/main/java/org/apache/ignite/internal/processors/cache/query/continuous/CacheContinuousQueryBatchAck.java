@@ -148,7 +148,7 @@ public class CacheContinuousQueryBatchAck extends GridCacheMessage {
 
     /** {@inheritDoc} */
     @Override public byte directType() {
-        return 116;
+        return 118;
     }
 
     /** {@inheritDoc} */
