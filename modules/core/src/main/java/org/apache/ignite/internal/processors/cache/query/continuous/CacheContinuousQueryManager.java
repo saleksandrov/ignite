@@ -23,6 +23,7 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
@@ -46,12 +47,14 @@ import org.apache.ignite.cache.CacheEntryEventSerializableFilter;
 import org.apache.ignite.cache.CacheMode;
 import org.apache.ignite.cache.query.ContinuousQuery;
 import org.apache.ignite.cluster.ClusterNode;
+import org.apache.ignite.internal.GridKernalContext;
 import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
 import org.apache.ignite.internal.processors.cache.CacheObject;
 import org.apache.ignite.internal.processors.cache.GridCacheEntryEx;
 import org.apache.ignite.internal.processors.cache.GridCacheManagerAdapter;
 import org.apache.ignite.internal.processors.cache.KeyCacheObject;
 import org.apache.ignite.internal.processors.continuous.GridContinuousHandler;
+import org.apache.ignite.internal.processors.timeout.GridTimeoutProcessor;
 import org.apache.ignite.internal.util.typedef.CI2;
 import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.internal.U;
@@ -108,6 +111,9 @@ public class CacheContinuousQueryManager extends GridCacheManagerAdapter {
     /** Ordered topic prefix. */
     private String topicPrefix;
 
+    /** Timeout backup flush task. */
+    private GridTimeoutProcessor.CancelableTask backTask;
+
     /** {@inheritDoc} */
     @Override protected void start0() throws IgniteCheckedException {
         // Append cache name to the topic.
@@ -123,12 +129,13 @@ public class CacheContinuousQueryManager extends GridCacheManagerAdapter {
                 }
             });
 
-        cctx.time().schedule(new Runnable() {
-            @Override public void run() {
-                for (CacheContinuousQueryListener lsnr : lsnrs.values())
-                    lsnr.acknowledgeBackupOnTimeout(cctx.kernalContext());
-            }
-        }, BACKUP_ACK_FREQ, BACKUP_ACK_FREQ);
+        backTask = cctx.time().schedule(new BackupCleanerTask(lsnrs, cctx.kernalContext()), BACKUP_ACK_FREQ, BACKUP_ACK_FREQ);
+    }
+
+    /** {@inheritDoc} */
+    @Override protected void stop0(boolean cancel) {
+        if (backTask != null)
+            backTask.close();
     }
 
     /** {@inheritDoc} */
@@ -876,6 +883,31 @@ public class CacheContinuousQueryManager extends GridCacheManagerAdapter {
                 default:
                     throw new IllegalStateException("Unknown type: " + evtType);
             }
+        }
+    }
+
+    /**
+     * Task flash backup queue.
+     */
+    private static final class BackupCleanerTask implements Runnable {
+        /** Listeners. */
+        private final Map<UUID, CacheContinuousQueryListener> lsnrs;
+
+        /** Context. */
+        private final GridKernalContext ctx;
+
+        /**
+         * @param lsnrs Listeners.
+         */
+        public BackupCleanerTask(Map<UUID, CacheContinuousQueryListener> lsnrs, GridKernalContext ctx) {
+            this.lsnrs = lsnrs;
+            this.ctx = ctx;
+        }
+
+        /** {@inheritDoc} */
+        @Override public void run() {
+            for (CacheContinuousQueryListener lsnr : lsnrs.values())
+                lsnr.acknowledgeBackupOnTimeout(ctx);
         }
     }
 }
