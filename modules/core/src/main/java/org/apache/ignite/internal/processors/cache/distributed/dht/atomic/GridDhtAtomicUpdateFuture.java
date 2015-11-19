@@ -154,11 +154,6 @@ public class GridDhtAtomicUpdateFuture extends GridFutureAdapter<Void>
         return registerResponse(nodeId);
     }
 
-    /** {@inheritDoc} */
-    @Override public Collection<? extends ClusterNode> nodes() {
-        return F.view(F.viewReadOnly(mappings.keySet(), U.id2Node(cctx.kernalContext())), F.notNull());
-    }
-
     /**
      * @param nodeId Node ID.
      * @return {@code True} if request found.
