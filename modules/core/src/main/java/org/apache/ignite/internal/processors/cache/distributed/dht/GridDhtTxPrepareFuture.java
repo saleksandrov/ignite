@@ -1502,37 +1502,12 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
 
                 // Process invalid partitions (no need to remap).
                 // Keep this loop for backward compatibility.
-                if (!F.isEmpty(res.invalidPartitions())) {
-                    for (Iterator<IgniteTxEntry> it = dhtMapping.entries().iterator(); it.hasNext();) {
-                        IgniteTxEntry entry  = it.next();
-
-                        if (res.invalidPartitions().contains(entry.cached().partition())) {
-                            it.remove();
-
-                            if (log.isDebugEnabled())
-                                log.debug("Removed mapping for entry from dht mapping [key=" + entry.key() +
-                                    ", tx=" + tx + ", dhtMapping=" + dhtMapping + ']');
-                        }
-                    }
-                }
+                if (!F.isEmpty(res.invalidPartitions()))
+                    dhtMapping.removeInvalidPartitions(res.invalidPartitions());
 
                 // Process invalid partitions (no need to remap).
                 if (!F.isEmpty(res.invalidPartitionsByCacheId())) {
-                    Map<Integer, int[]> invalidPartsMap = res.invalidPartitionsByCacheId();
-
-                    for (Iterator<IgniteTxEntry> it = dhtMapping.entries().iterator(); it.hasNext();) {
-                        IgniteTxEntry entry  = it.next();
-
-                        int[] invalidParts = invalidPartsMap.get(entry.cacheId());
-
-                        if (invalidParts != null && F.contains(invalidParts, entry.cached().partition())) {
-                            it.remove();
-
-                            if (log.isDebugEnabled())
-                                log.debug("Removed mapping for entry from dht mapping [key=" + entry.key() +
-                                    ", tx=" + tx + ", dhtMapping=" + dhtMapping + ']');
-                        }
-                    }
+                    dhtMapping.removeInvalidPartitionsByCacheId(res.invalidPartitionsByCacheId());
 
                     if (dhtMapping.empty()) {
                         dhtMap.remove(nodeId);
