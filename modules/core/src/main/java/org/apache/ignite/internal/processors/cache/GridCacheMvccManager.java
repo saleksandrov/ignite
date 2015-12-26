@@ -76,12 +76,12 @@ public class GridCacheMvccManager extends GridCacheSharedManagerAdapter {
     private static final int MAX_REMOVED_LOCKS = 10240;
 
     /** Pending locks per thread. */
-    private final ThreadLocal<LinkedList<GridCacheMvccCandidate>> pending =
-        new ThreadLocal<LinkedList<GridCacheMvccCandidate>>() {
-            @Override protected LinkedList<GridCacheMvccCandidate> initialValue() {
-                return new LinkedList<>();
-            }
-        };
+    private final ThreadLocal<ArrayList<GridCacheMvccCandidate>> pending =
+        new ThreadLocal<ArrayList<GridCacheMvccCandidate>>() {
+        @Override protected ArrayList<GridCacheMvccCandidate> initialValue() {
+            return new ArrayList<>();
+        }
+    };
 
     /** Pending near local locks and topology version per thread. */
     private ConcurrentMap<Long, GridCacheExplicitLockSpan> pendingExplicit;
@@ -126,7 +126,7 @@ public class GridCacheMvccManager extends GridCacheSharedManagerAdapter {
     @GridToStringExclude
     private final GridCacheMvccCallback cb = new GridCacheMvccCallback() {
         /** {@inheritDoc} */
-        @SuppressWarnings({"unchecked"})
+        @SuppressWarnings({"unchecked", "SynchronizationOnLocalVariableOrMethodParameter"})
         @Override public void onOwnerChanged(GridCacheEntryEx entry, GridCacheMvccCandidate prev,
             GridCacheMvccCandidate owner) {
             assert entry != null;
@@ -263,6 +263,7 @@ public class GridCacheMvccManager extends GridCacheSharedManagerAdapter {
     /**
      * @return Collection of active futures.
      */
+    @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
     public Collection<GridCacheFuture<?>> activeFutures() {
         ArrayList<GridCacheFuture<?>> col = new ArrayList<>();
 
@@ -598,7 +599,7 @@ public class GridCacheMvccManager extends GridCacheSharedManagerAdapter {
      * @param futId Future ID.
      * @return Future.
      */
-    @SuppressWarnings({"unchecked"})
+    @SuppressWarnings({"unchecked", "SynchronizationOnLocalVariableOrMethodParameter"})
     @Nullable public GridCacheMvccFuture<?> mvccFuture(GridCacheVersion ver, IgniteUuid futId) {
         Collection<GridCacheMvccFuture<?>> futs = this.mvccFuts.get(ver);
 
@@ -725,12 +726,14 @@ public class GridCacheMvccManager extends GridCacheSharedManagerAdapter {
         if (cacheCtx.isNear() || cand.singleImplicit())
             return true;
 
-        LinkedList<GridCacheMvccCandidate> queue = pending.get();
+        ArrayList<GridCacheMvccCandidate> queue = pending.get();
 
         GridCacheMvccCandidate prev = null;
 
-        if (!queue.isEmpty())
-            prev = queue.getLast();
+        int queueSize = queue.size();
+
+        if (queueSize > 0)
+            prev = queue.get(queueSize - 1);
 
         queue.add(cand);
 
@@ -750,7 +753,7 @@ public class GridCacheMvccManager extends GridCacheSharedManagerAdapter {
      * Reset MVCC context.
      */
     public void contextReset() {
-        pending.set(new LinkedList<GridCacheMvccCandidate>());
+        pending.get().clear();
     }
 
     /**
