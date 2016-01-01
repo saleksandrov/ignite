@@ -1054,11 +1054,13 @@ class GridDhtPartitionTopologyImpl implements GridDhtPartitionTopology {
 
             // Remove obsolete mappings.
             if (cur != null) {
-                for (Integer p : F.view(cur.keySet(), F.notIn(parts.keySet()))) {
-                    Set<UUID> ids = part2node.get(p);
+                for (Integer p : cur.keySet()) {
+                    if (!parts.keySet().contains(p)) {
+                        Set<UUID> ids = part2node.get(p);
 
-                    if (ids != null)
-                        changed |= ids.remove(parts.nodeId());
+                        if (ids != null)
+                            changed |= ids.remove(parts.nodeId());
+                    }
                 }
             }
 
