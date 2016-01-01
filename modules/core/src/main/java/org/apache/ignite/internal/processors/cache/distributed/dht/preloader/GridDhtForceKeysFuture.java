@@ -47,6 +47,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -515,15 +516,20 @@ public final class GridDhtForceKeysFuture<K, V> extends GridCompoundFuture<Objec
 
             // If rebalancing is disabled, we need to check other backups.
             if (!cctx.rebalanceEnabled()) {
-                Collection<KeyCacheObject> retryKeys = F.view(
-                    keys,
-                    F.and(
-                        F.notIn(missedKeys),
-                        F.notIn(F.viewReadOnly(res.forcedInfos(), CU.<KeyCacheObject, V>info2Key()))
-                    )
-                );
+                Collection<KeyCacheObject> forced = F.viewReadOnly(res.forcedInfos(), CU.<KeyCacheObject, V>info2Key());
 
-                if (!retryKeys.isEmpty())
+                Collection<KeyCacheObject> retryKeys = null;
+
+                for (KeyCacheObject key : keys) {
+                    if (!F.contains(missedKeys, key) && !F.contains(forced, key)) {
+                        if (retryKeys == null)
+                            retryKeys = new LinkedList<>();
+
+                        retryKeys.add(key);
+                    }
+                }
+
+                if (retryKeys != null)
                     map(retryKeys, F.concat(false, node, exc));
             }
 
