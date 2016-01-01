@@ -1738,11 +1738,14 @@ public abstract class CacheAbstractJdbcStore<K, V> implements CacheStore<K, V>, 
 
             keyCols = databaseColumns(F.asList(keyFields));
 
-            uniqValFlds = F.view(F.asList(valFields), new IgnitePredicate<JdbcTypeField>() {
-                @Override public boolean apply(JdbcTypeField col) {
-                    return !keyCols.contains(col.getDatabaseFieldName());
+            uniqValFlds = new ArrayList<>();
+
+            if (valFields != null) {
+                for (JdbcTypeField valField : valFields) {
+                    if (valField != null && !keyCols.contains(valField.getDatabaseFieldName()))
+                        uniqValFlds.add(valField);
                 }
-            });
+            }
 
             String schema = typeMeta.getDatabaseSchema();
 
