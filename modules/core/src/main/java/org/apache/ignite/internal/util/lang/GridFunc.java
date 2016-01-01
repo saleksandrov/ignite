@@ -2198,6 +2198,25 @@ public class GridFunc {
     }
 
     /**
+     * Get the very first element in the collection which passes provided predicate.
+     *
+     * @param c Collection.
+     * @param pred Predicate.
+     * @return First element or {@code null}.
+     */
+    public static <T> T first(@Nullable Iterable<? extends T> c, IgnitePredicate<? super T> pred) {
+        if (c == null)
+            return null;
+
+        for (T next : c) {
+            if (pred.apply(next))
+                return next;
+        }
+
+        return null;
+    }
+
+    /**
      * Gets first element from given list or returns {@code null} if list is empty.
      *
      * @param list List.
