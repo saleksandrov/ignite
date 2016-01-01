@@ -17,19 +17,6 @@
 
 package org.apache.ignite.internal.processors.cache.distributed.near;
 
-import java.io.Externalizable;
-import java.util.AbstractSet;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Set;
-import java.util.UUID;
-import javax.cache.Cache;
-import javax.cache.expiry.ExpiryPolicy;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.IgniteException;
 import org.apache.ignite.cache.CachePeekMode;
@@ -69,6 +56,20 @@ import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.lang.IgniteBiPredicate;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import javax.cache.Cache;
+import javax.cache.expiry.ExpiryPolicy;
+import java.io.Externalizable;
+import java.util.AbstractSet;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * Common logic for near caches.
@@ -368,11 +369,13 @@ public abstract class GridNearCacheAdapter<K, V> extends GridDistributedCacheAda
                             Collection<GridDhtCacheEntry> entries0 = p.entries();
 
                             if (!F.isEmpty(filter))
-                                entries0 = F.view(entries0, new CacheEntryPredicateAdapter() {
-                                    @Override public boolean apply(GridCacheEntryEx e) {
-                                        return F.isAll(e, filter);
+                                entries0 = F.viewReadOnly(entries0, F.<GridDhtCacheEntry>identity(),
+                                    new CacheEntryPredicateAdapter() {
+                                        @Override public boolean apply(GridCacheEntryEx e) {
+                                            return F.isAll(e, filter);
+                                        }
                                     }
-                                });
+                                );
 
                             return F.viewReadOnly(
                                 entries0,
