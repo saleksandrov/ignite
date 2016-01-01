@@ -17,14 +17,6 @@
 
 package org.apache.ignite.internal.processors.cache;
 
-import java.io.Externalizable;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.ignite.cluster.ClusterNode;
 import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
 import org.apache.ignite.internal.processors.cache.transactions.IgniteTxKey;
@@ -39,16 +31,16 @@ import org.apache.ignite.internal.util.typedef.internal.SB;
 import org.apache.ignite.internal.util.typedef.internal.U;
 import org.jetbrains.annotations.Nullable;
 
-import static org.apache.ignite.internal.processors.cache.GridCacheMvccCandidate.Mask.DHT_LOCAL;
-import static org.apache.ignite.internal.processors.cache.GridCacheMvccCandidate.Mask.LOCAL;
-import static org.apache.ignite.internal.processors.cache.GridCacheMvccCandidate.Mask.NEAR_LOCAL;
-import static org.apache.ignite.internal.processors.cache.GridCacheMvccCandidate.Mask.OWNER;
-import static org.apache.ignite.internal.processors.cache.GridCacheMvccCandidate.Mask.READY;
-import static org.apache.ignite.internal.processors.cache.GridCacheMvccCandidate.Mask.REENTRY;
-import static org.apache.ignite.internal.processors.cache.GridCacheMvccCandidate.Mask.REMOVED;
-import static org.apache.ignite.internal.processors.cache.GridCacheMvccCandidate.Mask.SINGLE_IMPLICIT;
-import static org.apache.ignite.internal.processors.cache.GridCacheMvccCandidate.Mask.TX;
-import static org.apache.ignite.internal.processors.cache.GridCacheMvccCandidate.Mask.USED;
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
+
+import static org.apache.ignite.internal.processors.cache.GridCacheMvccCandidate.Mask.*;
 
 /**
  * Lock candidate.
@@ -336,11 +328,27 @@ public class GridCacheMvccCandidate implements Externalizable,
      * @param node Node to remove.
      */
     public void removeMappedNode(ClusterNode node) {
-        if (mappedDhtNodes.contains(node))
-            mappedDhtNodes = new ArrayList<>(F.view(mappedDhtNodes, F.notEqualTo(node)));
+        if (mappedDhtNodes.contains(node)) {
+            ArrayList<ClusterNode> tmp = new ArrayList<>(mappedDhtNodes.size() - 1);
 
-        if (mappedNearNodes != null && mappedNearNodes.contains(node))
-            mappedNearNodes = new ArrayList<>(F.view(mappedNearNodes, F.notEqualTo(node)));
+            for (ClusterNode dhtNode : mappedDhtNodes) {
+                if (!F.eq(dhtNode, node))
+                    tmp.add(dhtNode);
+            }
+
+            mappedDhtNodes = tmp;
+        }
+
+        if (mappedNearNodes != null && mappedNearNodes.contains(node)) {
+            ArrayList<ClusterNode> tmp = new ArrayList<>(mappedNearNodes.size() - 1);
+
+            for (ClusterNode nearNode : mappedNearNodes) {
+                if (!F.eq(nearNode, node))
+                    tmp.add(nearNode);
+            }
+
+            mappedNearNodes = tmp;
+        }
     }
 
     /**

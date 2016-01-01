@@ -17,17 +17,6 @@
 
 package org.apache.ignite.internal.processors.cache;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ConcurrentMap;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.IgniteLogger;
 import org.apache.ignite.events.DiscoveryEvent;
@@ -63,10 +52,21 @@ import org.jetbrains.annotations.Nullable;
 import org.jsr166.ConcurrentHashMap8;
 import org.jsr166.ConcurrentLinkedDeque8;
 
-import static org.apache.ignite.events.EventType.EVT_NODE_FAILED;
-import static org.apache.ignite.events.EventType.EVT_NODE_LEFT;
-import static org.apache.ignite.internal.util.GridConcurrentFactory.newMap;
-import static org.jsr166.ConcurrentLinkedHashMap.QueuePolicy.PER_SEGMENT_Q;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentMap;
+
+import static org.apache.ignite.events.EventType.*;
+import static org.apache.ignite.internal.util.GridConcurrentFactory.*;
+import static org.jsr166.ConcurrentLinkedHashMap.QueuePolicy.*;
 
 /**
  * Manages lock order within a thread.
@@ -1094,9 +1094,14 @@ public class GridCacheMvccManager extends GridCacheSharedManagerAdapter {
                     Collection<GridCacheMvccCandidate> locs = entry.localCandidates();
 
                     if (!F.isEmpty(locs)) {
+                        IgnitePredicate<GridCacheMvccCandidate> verFilter = versionFilter();
+
                         Collection<GridCacheMvccCandidate> cands = new ConcurrentLinkedQueue<>();
 
-                        cands.addAll(F.view(locs, versionFilter()));
+                        for (GridCacheMvccCandidate loc : locs) {
+                            if (verFilter.apply(loc))
+                                cands.add(loc);
+                        }
 
                         if (!F.isEmpty(cands))
                             pendingLocks.put(entry.txKey(), cands);
