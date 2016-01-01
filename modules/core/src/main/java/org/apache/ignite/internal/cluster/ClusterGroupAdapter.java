@@ -17,20 +17,6 @@
 
 package org.apache.ignite.internal.cluster;
 
-import java.io.Externalizable;
-import java.io.IOException;
-import java.io.InvalidObjectException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
-import java.io.ObjectStreamException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.ExecutorService;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.IgniteCompute;
@@ -59,7 +45,22 @@ import org.apache.ignite.lang.IgnitePredicate;
 import org.apache.ignite.resources.IgniteInstanceResource;
 import org.jetbrains.annotations.Nullable;
 
-import static org.apache.ignite.internal.IgniteNodeAttributes.ATTR_MACS;
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.InvalidObjectException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.io.ObjectStreamException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+
+import static org.apache.ignite.internal.IgniteNodeAttributes.*;
 
 /**
  *
@@ -313,7 +314,7 @@ public class ClusterGroupAdapter implements ClusterGroupEx, Externalizable {
             else {
                 Collection<ClusterNode> all = ctx.discovery().allNodes();
 
-                return p != null ? F.view(all, p) : all;
+                return p != null ? F.viewReadOnly(all, F.<ClusterNode>identity(), p) : all;
             }
         }
         finally {
