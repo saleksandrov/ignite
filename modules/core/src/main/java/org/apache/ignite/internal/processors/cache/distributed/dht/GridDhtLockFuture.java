@@ -17,17 +17,6 @@
 
 package org.apache.ignite.internal.processors.cache.distributed.dht;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.IgniteLogger;
 import org.apache.ignite.cluster.ClusterNode;
@@ -68,6 +57,18 @@ import org.apache.ignite.transactions.TransactionIsolation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jsr166.ConcurrentHashMap8;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.ignite.events.EventType.EVT_CACHE_REBALANCE_OBJECT_LOADED;
 import static org.apache.ignite.internal.processors.dr.GridDrType.DR_NONE;
@@ -285,15 +286,19 @@ public final class GridDhtLockFuture extends GridCompoundIdentityFuture<Boolean>
     /**
      * @return Entries.
      */
-    public Collection<GridDhtCacheEntry> entries() {
-        return F.view(entries, F.notNull());
-    }
-
-    /**
-     * @return Entries.
-     */
     public synchronized Collection<GridDhtCacheEntry> entriesCopy() {
-        return new ArrayList<>(entries());
+        if (entries == null)
+            return Collections.emptyList();
+        else {
+            ArrayList<GridDhtCacheEntry> res = new ArrayList<>(entries.size());
+
+            for (GridDhtCacheEntry entry : entries) {
+                if (entry != null)
+                    res.add(entry);
+            }
+
+            return res;
+        }
     }
 
     /**
@@ -673,7 +678,7 @@ public final class GridDhtLockFuture extends GridCompoundIdentityFuture<Boolean>
             }
 
             if (checkLocks())
-                map(entries());
+                map(entries);
 
             return true;
         }
@@ -793,9 +798,9 @@ public final class GridDhtLockFuture extends GridCompoundIdentityFuture<Boolean>
     }
 
     /**
-     * @param entries Entries.
+     * Do map.
      */
-    private void map(Iterable<GridDhtCacheEntry> entries) {
+    private void map(Collection<GridDhtCacheEntry> entries) {
         synchronized (this) {
             if (mapped)
                 return;
@@ -809,6 +814,9 @@ public final class GridDhtLockFuture extends GridCompoundIdentityFuture<Boolean>
 
             // Assign keys to primary nodes.
             for (GridDhtCacheEntry entry : entries) {
+                if (entry == null)
+                    continue;
+
                 try {
                     while (true) {
                         try {
