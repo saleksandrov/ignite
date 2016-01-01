@@ -17,14 +17,6 @@
 
 package org.apache.ignite.internal.processors.cache;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.IgniteException;
 import org.apache.ignite.IgniteLogger;
@@ -71,7 +63,16 @@ import org.apache.ignite.lang.IgniteUuid;
 import org.jetbrains.annotations.Nullable;
 import org.jsr166.ConcurrentHashMap8;
 
-import static org.apache.ignite.internal.GridTopic.TOPIC_CACHE;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+
+import static org.apache.ignite.internal.GridTopic.*;
 
 /**
  * Cache communication manager.
@@ -705,13 +706,11 @@ public class GridCacheIoManager extends GridCacheSharedManagerAdapter {
 
         while (cnt < retryCnt) {
             try {
-                Collection<? extends ClusterNode> nodesView = F.view(nodes, new P1<ClusterNode>() {
+                cctx.gridIO().send(nodes, new P1<ClusterNode>() {
                     @Override public boolean apply(ClusterNode e) {
                         return !leftIds.contains(e.id());
                     }
-                });
-
-                cctx.gridIO().send(nodesView, TOPIC_CACHE, msg, plc);
+                }, TOPIC_CACHE, msg, plc);
 
                 boolean added = false;
 

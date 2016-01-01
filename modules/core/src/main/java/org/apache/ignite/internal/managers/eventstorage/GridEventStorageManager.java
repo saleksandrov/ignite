@@ -17,21 +17,6 @@
 
 package org.apache.ignite.internal.managers.eventstorage;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.IgniteException;
 import org.apache.ignite.cluster.ClusterNode;
@@ -64,13 +49,25 @@ import org.apache.ignite.spi.eventstorage.EventStorageSpi;
 import org.jetbrains.annotations.Nullable;
 import org.jsr166.ConcurrentHashMap8;
 
-import static org.apache.ignite.events.EventType.EVTS_ALL;
-import static org.apache.ignite.events.EventType.EVTS_DISCOVERY_ALL;
-import static org.apache.ignite.events.EventType.EVT_NODE_FAILED;
-import static org.apache.ignite.events.EventType.EVT_NODE_LEFT;
-import static org.apache.ignite.events.EventType.EVT_NODE_METRICS_UPDATED;
-import static org.apache.ignite.internal.GridTopic.TOPIC_EVENT;
-import static org.apache.ignite.internal.managers.communication.GridIoPolicy.PUBLIC_POOL;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import static org.apache.ignite.events.EventType.*;
+import static org.apache.ignite.internal.GridTopic.*;
+import static org.apache.ignite.internal.managers.communication.GridIoPolicy.*;
 
 /**
  * Grid event storage SPI manager.
@@ -1015,15 +1012,14 @@ public class GridEventStorageManager extends GridManagerAdapter<EventStorageSpi>
         GridEventStorageMessage msg, byte plc) throws IgniteCheckedException {
         ClusterNode locNode = F.find(nodes, null, F.localNode(ctx.localNodeId()));
 
-        Collection<? extends ClusterNode> rmtNodes = F.view(nodes, F.remoteNodes(ctx.localNodeId()));
-
         if (locNode != null)
             ctx.io().send(locNode, topic, msg, plc);
 
-        if (!rmtNodes.isEmpty()) {
+        // Avoid marshaling if possible.
+        if (nodes.size() > (locNode != null ? 1 : 0)) {
             msg.responseTopicBytes(marsh.marshal(msg.responseTopic()));
 
-            ctx.io().send(rmtNodes, topic, msg, plc);
+            ctx.io().send(nodes, F.remoteNodes(ctx.localNodeId()), topic, msg, plc);
         }
     }
 
