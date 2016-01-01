@@ -1762,13 +1762,19 @@ class ServerImpl extends TcpDiscoveryImpl {
                 }
 
                 // Addresses that were removed by mistake (e.g. on segmentation).
-                Collection<InetSocketAddress> missingAddrs = F.view(
-                    currAddrs,
-                    F.notContains(regAddrs)
-                );
+                Collection<InetSocketAddress> missingAddrs = null;
+
+                for (InetSocketAddress curAddr : currAddrs) {
+                    if (regAddrs == null || !regAddrs.contains(curAddr)) {
+                        if (missingAddrs == null)
+                            missingAddrs = new LinkedList<>();
+
+                        missingAddrs.add(curAddr);
+                    }
+                }
 
                 // Re-register missing addresses.
-                if (!missingAddrs.isEmpty()) {
+                if (missingAddrs != null) {
                     spi.ipFinder.registerAddresses(missingAddrs);
 
                     if (log.isDebugEnabled())
