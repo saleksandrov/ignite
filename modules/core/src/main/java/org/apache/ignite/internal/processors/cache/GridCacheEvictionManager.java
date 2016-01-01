@@ -1991,7 +1991,7 @@ public class GridCacheEvictionManager extends GridCacheManagerAdapter {
                 });
 
                 if (err) {
-                    Collection<UUID> ids = F.view(resMap.keySet(), new P1<UUID>() {
+                    Collection<UUID> ids = F.viewReadOnly(resMap.keySet(), F.<UUID>identity(), new P1<UUID>() {
                         @Override public boolean apply(UUID e) {
                             return resMap.get(e).evictError();
                         }
