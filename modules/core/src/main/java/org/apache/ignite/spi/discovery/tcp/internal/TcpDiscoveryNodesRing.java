@@ -32,7 +32,6 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
@@ -431,16 +430,27 @@ public class TcpDiscoveryNodesRing {
      * @param excluded Nodes to exclude from the search (optional).
      * @return Coordinator node among remaining nodes or {@code null} if all nodes are excluded.
      */
+    @SuppressWarnings("ConstantConditions")
     @Nullable public TcpDiscoveryNode coordinator(@Nullable Collection<TcpDiscoveryNode> excluded) {
         rwLock.readLock().lock();
 
         try {
-            Collection<TcpDiscoveryNode> filtered = serverNodes(excluded);
+            boolean excludedEmpty = F.isEmpty(excluded);
 
-            if (F.isEmpty(filtered))
-                return null;
+            TcpDiscoveryNode res = null;
 
-            return Collections.min(filtered);
+            for (TcpDiscoveryNode node : nodes) {
+                if (!node.isClient() && (excludedEmpty || !excluded.contains(node))) {
+                    if (res == null)
+                        res = node;
+                    else {
+                        if (node.compareTo(res) < 0)
+                            res = node;
+                    }
+                }
+            }
+
+            return res;
         }
         finally {
             rwLock.readLock().unlock();
@@ -476,6 +486,7 @@ public class TcpDiscoveryNodesRing {
      * @return Next node or {@code null} if all nodes were filtered out or
      * topology contains less than two nodes.
      */
+    @SuppressWarnings("ConstantConditions")
     @Nullable public TcpDiscoveryNode nextNode(@Nullable Collection<TcpDiscoveryNode> excluded) {
         assert locNode.internalOrder() > 0 : locNode;
         assert excluded == null || excluded.isEmpty() || !excluded.contains(locNode) : excluded;
@@ -483,21 +494,28 @@ public class TcpDiscoveryNodesRing {
         rwLock.readLock().lock();
 
         try {
-            Collection<TcpDiscoveryNode> filtered = serverNodes(excluded);
+            boolean excludedEmpty = F.isEmpty(excluded);
 
-            if (filtered.size() < 2)
-                return null;
+            TcpDiscoveryNode first = null;
 
-            Iterator<TcpDiscoveryNode> iter = filtered.iterator();
+            boolean pickNext = false;
 
-            while (iter.hasNext()) {
-                TcpDiscoveryNode node = iter.next();
-
-                if (locNode.equals(node))
-                    break;
+            for (TcpDiscoveryNode node : nodes) {
+                if (!node.isClient() && (excludedEmpty || !excluded.contains(node))) {
+                    if (pickNext)
+                        return node;
+                    else {
+                        if (locNode.equals(node))
+                            pickNext = true;
+                        else {
+                            if (first == null)
+                                first = node;
+                        }
+                    }
+                }
             }
 
-            return iter.hasNext() ? iter.next() : F.first(filtered);
+            return first;
         }
         finally {
             rwLock.readLock().unlock();
@@ -593,22 +611,6 @@ public class TcpDiscoveryNodesRing {
         finally {
             rwLock.readLock().unlock();
         }
-    }
-
-    /**
-     * Gets server nodes from topology.
-     *
-     * @param excluded Nodes to exclude from the search (optional).
-     * @return Collection of server nodes.
-     */
-    private Collection<TcpDiscoveryNode> serverNodes(@Nullable final Collection<TcpDiscoveryNode> excluded) {
-        final boolean excludedEmpty = F.isEmpty(excluded);
-
-        return F.view(nodes, new P1<TcpDiscoveryNode>() {
-            @Override public boolean apply(TcpDiscoveryNode node) {
-                return !node.isClient() && (excludedEmpty || !excluded.contains(node));
-            }
-        });
     }
 
     /**
