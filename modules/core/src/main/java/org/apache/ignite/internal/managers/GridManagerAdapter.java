@@ -17,13 +17,6 @@
 
 package org.apache.ignite.internal.managers;
 
-import java.io.Serializable;
-import java.util.Collection;
-import java.util.Map;
-import java.util.UUID;
-import javax.cache.expiry.Duration;
-import javax.cache.expiry.ExpiryPolicy;
-import javax.cache.expiry.TouchedExpiryPolicy;
 import org.apache.ignite.IgniteCache;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.IgniteException;
@@ -58,9 +51,17 @@ import org.apache.ignite.spi.IgniteSpiNoop;
 import org.apache.ignite.spi.IgniteSpiTimeoutObject;
 import org.jetbrains.annotations.Nullable;
 
-import static java.util.Arrays.asList;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static org.apache.ignite.internal.managers.communication.GridIoPolicy.SYSTEM_POOL;
+import javax.cache.expiry.Duration;
+import javax.cache.expiry.ExpiryPolicy;
+import javax.cache.expiry.TouchedExpiryPolicy;
+import java.io.Serializable;
+import java.util.Collection;
+import java.util.Map;
+import java.util.UUID;
+
+import static java.util.Arrays.*;
+import static java.util.concurrent.TimeUnit.*;
+import static org.apache.ignite.internal.managers.communication.GridIoPolicy.*;
 
 /**
  * Convenience adapter for grid managers.
@@ -334,13 +335,15 @@ public abstract class GridManagerAdapter<T extends IgniteSpi> implements GridMan
                     @Override public Collection<ClusterNode> remoteDaemonNodes() {
                         final Collection<ClusterNode> all = ctx.discovery().daemonNodes();
 
-                        return !localNode().isDaemon() ?
-                            all :
-                            F.view(all, new IgnitePredicate<ClusterNode>() {
+                        if (localNode().isDaemon()) {
+                            return F.retain(all, true, new IgnitePredicate<ClusterNode>() {
                                 @Override public boolean apply(ClusterNode n) {
                                     return n.isDaemon();
                                 }
                             });
+                        }
+                        else
+                            return all;
                     }
 
                     @Nullable @Override public ClusterNode node(UUID nodeId) {
