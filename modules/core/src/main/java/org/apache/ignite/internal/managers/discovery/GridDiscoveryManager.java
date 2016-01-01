@@ -1084,9 +1084,9 @@ public class GridDiscoveryManager extends GridManagerAdapter<DiscoverySpi> {
 
         Collection<ClusterNode> rmtNodes = discoCache.remoteNodes();
 
-        Collection<ClusterNode> srvNodes = F.view(discoCache.allNodes(), F.not(clientFilter));
+        Collection<ClusterNode> srvNodes = F.retain(discoCache.allNodes(), true, F.not(clientFilter));
 
-        Collection<ClusterNode> clientNodes = F.view(discoCache.allNodes(), clientFilter);
+        Collection<ClusterNode> clientNodes = F.retain(discoCache.allNodes(), true, clientFilter);
 
         ClusterNode locNode = discoCache.localNode();
 
