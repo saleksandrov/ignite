@@ -1549,9 +1549,11 @@ public class GridIoManager extends GridManagerAdapter<CommunicationSpi<Serializa
             }
         }
         catch (IgniteSpiException e) {
+
+
             throw new IgniteCheckedException("Failed to send message (nodes may have left the grid or " +
                 "TCP connection cannot be established due to firewall issues) " +
-                "[nodes=" + F.retain(nodes, true, pred) + ", topic=" + topic +
+                "[nodes=" + F.viewReadOnly(nodes, F.<ClusterNode>identity(), pred) + ", topic=" + topic +
                 ", msg=" + msg + ", policy=" + plc + ']', e);
         }
     }
