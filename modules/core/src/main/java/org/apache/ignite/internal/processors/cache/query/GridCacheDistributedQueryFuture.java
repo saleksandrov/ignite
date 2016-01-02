@@ -17,6 +17,14 @@
 
 package org.apache.ignite.internal.processors.cache.query;
 
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.cluster.ClusterNode;
+import org.apache.ignite.internal.IgniteInterruptedCheckedException;
+import org.apache.ignite.internal.cluster.ClusterTopologyCheckedException;
+import org.apache.ignite.internal.processors.cache.GridCacheContext;
+import org.apache.ignite.internal.util.typedef.P1;
+import org.apache.ignite.internal.util.typedef.internal.U;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -24,14 +32,6 @@ import java.util.HashSet;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
-import org.apache.ignite.IgniteCheckedException;
-import org.apache.ignite.cluster.ClusterNode;
-import org.apache.ignite.internal.IgniteInterruptedCheckedException;
-import org.apache.ignite.internal.cluster.ClusterTopologyCheckedException;
-import org.apache.ignite.internal.processors.cache.GridCacheContext;
-import org.apache.ignite.internal.util.typedef.F;
-import org.apache.ignite.internal.util.typedef.P1;
-import org.apache.ignite.internal.util.typedef.internal.U;
 
 /**
  * Distributed query future.
@@ -88,13 +88,12 @@ public class GridCacheDistributedQueryFuture<K, V, R> extends GridCacheQueryFutu
             Collection<ClusterNode> nodes;
 
             synchronized (mux) {
-                nodes = F.retain(allNodes, true,
-                    new P1<ClusterNode>() {
-                        @Override public boolean apply(ClusterNode node) {
-                            return !cctx.localNodeId().equals(node.id()) && subgrid.contains(node.id());
-                        }
-                    }
-                );
+                nodes = new ArrayList<>(allNodes.size());
+
+                for (ClusterNode node : allNodes) {
+                    if (!cctx.localNodeId().equals(node.id()) && subgrid.contains(node.id()))
+                        nodes.add(node);
+                }
 
                 subgrid.clear();
             }
