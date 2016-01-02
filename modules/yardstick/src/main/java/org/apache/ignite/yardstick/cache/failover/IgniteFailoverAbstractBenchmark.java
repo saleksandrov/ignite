@@ -184,7 +184,7 @@ public abstract class IgniteFailoverAbstractBenchmark<K, V> extends IgniteCacheA
         while (true) {
             boolean partitionsExchangeFinished = true;
 
-            for (IgniteInternalCache<?, ?> cache : kernal.cachesx(null)) {
+            for (IgniteInternalCache<?, ?> cache : kernal.cachesx()) {
                 log.info("Checking cache: " + cache.name());
 
                 GridCacheAdapter<?, ?> c = kernal.internalCache(cache.name());

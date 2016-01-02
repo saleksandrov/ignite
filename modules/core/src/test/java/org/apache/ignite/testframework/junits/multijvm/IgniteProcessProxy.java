@@ -17,37 +17,7 @@
 
 package org.apache.ignite.testframework.junits.multijvm;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
-import org.apache.ignite.Ignite;
-import org.apache.ignite.IgniteAtomicLong;
-import org.apache.ignite.IgniteAtomicReference;
-import org.apache.ignite.IgniteAtomicSequence;
-import org.apache.ignite.IgniteAtomicStamped;
-import org.apache.ignite.IgniteCache;
-import org.apache.ignite.IgniteCompute;
-import org.apache.ignite.IgniteCountDownLatch;
-import org.apache.ignite.IgniteSemaphore;
-import org.apache.ignite.IgniteDataStreamer;
-import org.apache.ignite.IgniteEvents;
-import org.apache.ignite.IgniteException;
-import org.apache.ignite.IgniteFileSystem;
-import org.apache.ignite.IgniteIllegalStateException;
-import org.apache.ignite.IgniteLogger;
-import org.apache.ignite.IgniteMessaging;
-import org.apache.ignite.IgniteBinary;
-import org.apache.ignite.IgniteQueue;
-import org.apache.ignite.IgniteScheduler;
-import org.apache.ignite.IgniteServices;
-import org.apache.ignite.IgniteSet;
-import org.apache.ignite.IgniteTransactions;
+import org.apache.ignite.*;
 import org.apache.ignite.cache.affinity.Affinity;
 import org.apache.ignite.cluster.ClusterGroup;
 import org.apache.ignite.cluster.ClusterNode;
@@ -73,7 +43,6 @@ import org.apache.ignite.internal.util.typedef.internal.A;
 import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.lang.IgniteCallable;
 import org.apache.ignite.lang.IgniteInClosure;
-import org.apache.ignite.lang.IgnitePredicate;
 import org.apache.ignite.lang.IgniteProductVersion;
 import org.apache.ignite.lang.IgniteRunnable;
 import org.apache.ignite.plugin.IgnitePlugin;
@@ -81,6 +50,16 @@ import org.apache.ignite.plugin.PluginNotFoundException;
 import org.apache.ignite.resources.IgniteInstanceResource;
 import org.apache.ignite.testframework.junits.IgniteTestResources;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Ignite proxy for ignite instance at another JVM.
@@ -301,8 +280,7 @@ public class IgniteProcessProxy implements IgniteEx {
     }
 
     /** {@inheritDoc} */
-    @Override public Collection<IgniteInternalCache<?, ?>> cachesx(
-        @Nullable IgnitePredicate<? super IgniteInternalCache<?, ?>>... p) {
+    @Override public Collection<IgniteInternalCache<?, ?>> cachesx() {
         throw new UnsupportedOperationException("Operation isn't supported yet.");
     }
 

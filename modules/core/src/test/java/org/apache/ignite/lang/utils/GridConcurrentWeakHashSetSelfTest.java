@@ -17,17 +17,19 @@
 
 package org.apache.ignite.lang.utils;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
-import java.util.concurrent.CountDownLatch;
 import org.apache.ignite.internal.util.GridConcurrentWeakHashSet;
 import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.testframework.junits.common.GridCommonAbstractTest;
 import org.apache.ignite.testframework.junits.common.GridCommonTest;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * Test for {@link GridConcurrentWeakHashSet}.
@@ -94,7 +96,12 @@ public class GridConcurrentWeakHashSetSelfTest extends GridCommonAbstractTest {
         assert set.retainAll(c);
         assert !set.retainAll(c);
 
-        Collection<Integer> c2 = F.retain(c1, true, c);
+        Collection<Integer> c2 = new ArrayList<>();
+
+        for (Integer val : c1) {
+            if (c.contains(val))
+                c2.add(val);
+        }
 
         assert set.containsAll(c2);
         assert !set.containsAll(c1);

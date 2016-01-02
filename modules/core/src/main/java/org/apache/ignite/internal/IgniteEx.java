@@ -17,7 +17,6 @@
 
 package org.apache.ignite.internal;
 
-import java.util.Collection;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteFileSystem;
 import org.apache.ignite.cluster.ClusterNode;
@@ -27,6 +26,8 @@ import org.apache.ignite.internal.processors.cache.IgniteInternalCache;
 import org.apache.ignite.internal.processors.hadoop.Hadoop;
 import org.apache.ignite.lang.IgnitePredicate;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.Collection;
 
 /**
  * Extended Grid interface which provides some additional methods required for kernal and Visor.
@@ -64,10 +65,9 @@ public interface IgniteEx extends Ignite {
      * Gets configured cache instance that satisfy all provided predicates including non-public caches. If no
      * predicates provided - all configured caches will be returned.
      *
-     * @param p Predicates. If none provided - all configured caches will be returned.
      * @return Configured cache instances that satisfy all provided predicates.
      */
-    public Collection<IgniteInternalCache<?, ?>> cachesx(@Nullable IgnitePredicate<? super IgniteInternalCache<?, ?>>... p);
+    public Collection<IgniteInternalCache<?, ?>> cachesx();
 
     /**
      * Checks if the event type is user-recordable.

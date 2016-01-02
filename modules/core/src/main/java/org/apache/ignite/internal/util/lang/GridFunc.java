@@ -927,43 +927,6 @@ public class GridFunc {
     }
 
     /**
-     * Retains all elements in input collection that are contained in {@code filter}.
-     *
-     * @param c Input collection.
-     * @param cp If {@code true} method creates collection not modifying input, otherwise does
-     *      <tt>in-place</tt> modifications.
-     * @param filter Filter collection. If filter collection is {@code null} or empty -
-     *      an empty collection will be returned.
-     * @param <T> Type of collections.
-     * @return Collection of retain elements.
-     */
-    public static <T0, T extends T0> Collection<T> retain(Collection<T> c, boolean cp,
-        @Nullable Collection<? extends T0> filter) {
-        A.notNull(c, "c");
-
-        return retain(c, cp, in(filter));
-    }
-
-    /**
-     * Retains all elements in input collection that are evaluated to {@code true}
-     * by the given predicate.
-     *
-     * @param c Input collection.
-     * @param cp If {@code true} method creates collection not modifying input, otherwise does
-     *      <tt>in-place</tt> modifications.
-     * @param p Predicates to filter by. If no predicates provides - all elements
-     *      will be retained.
-     * @param <T> Type of collections.
-     * @return Collection of retain elements.
-     */
-    public static <T> Collection<T> retain(Collection<T> c, boolean cp, IgnitePredicate<? super T> p) {
-        A.notNull(c, "c");
-        A.notNull(p, "p");
-
-        return lose(c, cp, not(p));
-    }
-
-    /**
      * Retains all elements in input collection that are evaluated to {@code true}
      * by all given predicates.
      *
