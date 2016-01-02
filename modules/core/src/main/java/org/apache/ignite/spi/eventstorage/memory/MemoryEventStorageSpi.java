@@ -17,10 +17,8 @@
 
 package org.apache.ignite.spi.eventstorage.memory;
 
-import java.util.Collection;
 import org.apache.ignite.IgniteLogger;
 import org.apache.ignite.events.Event;
-import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.internal.A;
 import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.internal.util.typedef.internal.U;
@@ -33,7 +31,10 @@ import org.apache.ignite.spi.IgniteSpiMultipleInstancesSupport;
 import org.apache.ignite.spi.eventstorage.EventStorageSpi;
 import org.jsr166.ConcurrentLinkedDeque8;
 
-import static org.apache.ignite.events.EventType.EVT_NODE_METRICS_UPDATED;
+import java.util.ArrayList;
+import java.util.Collection;
+
+import static org.apache.ignite.events.EventType.*;
 
 /**
  * In-memory {@link org.apache.ignite.spi.eventstorage.EventStorageSpi} implementation. All events are
@@ -222,7 +223,18 @@ public class MemoryEventStorageSpi extends IgniteSpiAdapter implements EventStor
 
         cleanupQueue();
 
-        return F.retain((Collection<T>)evts, true, p);
+        if (p == null)
+            return (Collection<T>)new ArrayList<>(evts);
+        else {
+            ArrayList<T> res = new ArrayList<>(evts.sizex());
+
+            for (Event evt : evts) {
+                if (p.apply((T)evt))
+                    res.add((T)evt);
+            }
+
+            return res;
+        }
     }
 
     /** {@inheritDoc} */
