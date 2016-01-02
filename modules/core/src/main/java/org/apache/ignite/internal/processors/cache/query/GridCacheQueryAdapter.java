@@ -17,14 +17,6 @@
 
 package org.apache.ignite.internal.processors.cache.query;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Deque;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.Queue;
-import java.util.Set;
-import java.util.UUID;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.IgniteLogger;
 import org.apache.ignite.cache.CacheMode;
@@ -54,11 +46,17 @@ import org.apache.ignite.lang.IgniteReducer;
 import org.apache.ignite.plugin.security.SecurityPermission;
 import org.jetbrains.annotations.Nullable;
 
-import static org.apache.ignite.cache.CacheMode.LOCAL;
-import static org.apache.ignite.internal.processors.cache.query.GridCacheQueryType.SCAN;
-import static org.apache.ignite.internal.processors.cache.query.GridCacheQueryType.SET;
-import static org.apache.ignite.internal.processors.cache.query.GridCacheQueryType.SPI;
-import static org.apache.ignite.internal.processors.cache.query.GridCacheQueryType.SQL_FIELDS;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.Set;
+import java.util.UUID;
+
+import static org.apache.ignite.cache.CacheMode.*;
+import static org.apache.ignite.internal.processors.cache.query.GridCacheQueryType.*;
 
 /**
  * Query adapter.
@@ -532,7 +530,7 @@ public class GridCacheQueryAdapter<T> implements CacheQuery<T> {
         final Set<ClusterNode> owners =
             part == null ? Collections.<ClusterNode>emptySet() : new HashSet<>(cctx.topology().owners(part, topVer));
 
-        return F.view(affNodes, new P1<ClusterNode>() {
+        return F.viewReadOnly(affNodes, F.<ClusterNode>identity(), new P1<ClusterNode>() {
             @Override public boolean apply(ClusterNode n) {
                 return cctx.discovery().cacheAffinityNode(n, cctx.name()) &&
                     (prj == null || prj.node(n.id()) != null) &&
