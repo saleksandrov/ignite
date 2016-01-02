@@ -1635,8 +1635,16 @@ public class GridDhtPartitionsExchangeFuture extends GridFutureAdapter<AffinityT
     Collection<UUID> remaining() {
         if (rmtIds == null)
             return Collections.emptyList();
+        else {
+            ArrayList<UUID> res = new ArrayList<>(rmtIds);
 
-        return F.lose(rmtIds, true, rcvdIds);
+            for (UUID rmtId : rmtIds) {
+                if (!rcvdIds.contains(rmtId))
+                    res.add(rmtId);
+            }
+
+            return res;
+        }
     }
 
     /** {@inheritDoc} */
