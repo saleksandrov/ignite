@@ -17,17 +17,6 @@
 
 package org.apache.ignite.internal.processors.continuous;
 
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Random;
-import java.util.UUID;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCompute;
 import org.apache.ignite.IgniteEvents;
@@ -53,15 +42,22 @@ import org.apache.ignite.spi.discovery.tcp.ipfinder.TcpDiscoveryIpFinder;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
 import org.apache.ignite.testframework.junits.common.GridCommonAbstractTest;
 
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.apache.ignite.events.EventType.EVTS_ALL;
-import static org.apache.ignite.events.EventType.EVTS_DISCOVERY;
-import static org.apache.ignite.events.EventType.EVT_JOB_FINISHED;
-import static org.apache.ignite.events.EventType.EVT_JOB_STARTED;
-import static org.apache.ignite.events.EventType.EVT_NODE_FAILED;
-import static org.apache.ignite.events.EventType.EVT_NODE_LEFT;
-import static org.apache.ignite.internal.processors.continuous.GridContinuousProcessor.LocalRoutineInfo;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Random;
+import java.util.UUID;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static java.util.concurrent.TimeUnit.*;
+import static org.apache.ignite.events.EventType.*;
+import static org.apache.ignite.internal.processors.continuous.GridContinuousProcessor.*;
 
 /**
  * Event consume test.
@@ -1095,7 +1091,12 @@ public class GridEventConsumeSelfTest extends GridCommonAbstractTest {
             stopped.add(consumeId);
         }
 
-        Collection<UUID> notStopped = F.lose(started, true, stopped);
+        Collection<UUID> notStopped = new ArrayList<>();
+
+        for (UUID id : started) {
+            if (!stopped.contains(id))
+                notStopped.add(id);
+        }
 
         assertEquals("Not stopped IDs: " + notStopped, 0, notStopped.size());
     }
