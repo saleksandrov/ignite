@@ -1073,6 +1073,21 @@ public class GridFunc {
     }
 
     /**
+     * Converts given runnable to an absolute closure.
+     *
+     * @param r Runnable to convert to closure. If {@code null} - no-op closure is returned.
+     * @return Closure that wraps given runnable. Note that wrapping closure always returns {@code null}.
+     */
+    public static GridAbsClosure as(@Nullable final Runnable r) {
+        return new CA() {
+            @Override public void apply() {
+                if (r != null)
+                    r.run();
+            }
+        };
+    }
+
+    /**
      * Gets size of the given collection.
      *
      * @param c Collection.
