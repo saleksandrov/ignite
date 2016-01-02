@@ -36,7 +36,6 @@ import org.apache.ignite.internal.util.typedef.internal.CU;
 import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.lang.IgniteFuture;
-import org.apache.ignite.lang.IgnitePredicate;
 import org.apache.ignite.plugin.extensions.communication.Message;
 import org.apache.ignite.plugin.extensions.communication.MessageFactory;
 import org.apache.ignite.plugin.extensions.communication.MessageFormatter;
@@ -55,6 +54,7 @@ import javax.cache.expiry.Duration;
 import javax.cache.expiry.ExpiryPolicy;
 import javax.cache.expiry.TouchedExpiryPolicy;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
 import java.util.UUID;
@@ -336,11 +336,14 @@ public abstract class GridManagerAdapter<T extends IgniteSpi> implements GridMan
                         final Collection<ClusterNode> all = ctx.discovery().daemonNodes();
 
                         if (localNode().isDaemon()) {
-                            return F.retain(all, true, new IgnitePredicate<ClusterNode>() {
-                                @Override public boolean apply(ClusterNode n) {
-                                    return n.isDaemon();
-                                }
-                            });
+                            ArrayList<ClusterNode> res = new ArrayList<>(2);
+
+                            for (ClusterNode node : all) {
+                                if (node != null && node.isDaemon())
+                                    res.add(node);
+                            }
+
+                            return res;
                         }
                         else
                             return all;
