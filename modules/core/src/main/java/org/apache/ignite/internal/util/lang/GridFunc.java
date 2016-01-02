@@ -803,60 +803,6 @@ public class GridFunc {
     }
 
     /**
-     * Loses all elements in input collection that are contained in {@code filter} collection.
-     *
-     * @param c Input collection.
-     * @param cp If {@code true} method creates new collection not modifying input,
-     *      otherwise does <tt>in-place</tt> modifications.
-     * @param filter Filter collection. If {@code filter} collection is empty or
-     *      {@code null} - no elements are lost.
-     * @param <T> Type of collections.
-     * @return Collection of remaining elements
-     */
-    public static <T0, T extends T0> Collection<T> lose(Collection<T> c, boolean cp, @Nullable Collection<T0> filter) {
-        A.notNull(c, "c");
-
-        return lose(c, cp, in(filter));
-    }
-
-    /**
-     * Loses all elements in input collection that are evaluated to {@code true} by
-     * all given predicates.
-     *
-     * @param c Input collection.
-     * @param cp If {@code true} method creates new collection without modifying the input one,
-     *      otherwise does <tt>in-place</tt> modifications.
-     * @param p Predicate.
-     * @param <T> Type of collections.
-     * @return Collection of remaining elements.
-     */
-    public static <T> Collection<T> lose(Collection<T> c, boolean cp, IgnitePredicate<? super T> p) {
-        A.notNull(c, "c");
-
-        Collection<T> res;
-
-        if (!cp) {
-            res = c;
-
-            if (!isAlwaysFalse(p)) {
-                for (Iterator<T> iter = res.iterator(); iter.hasNext(); )
-                    if (p.apply(iter.next()))
-                        iter.remove();
-            }
-        }
-        else {
-            res = new LinkedList<>();
-
-            if (!isAlwaysTrue(p))
-                for (T t : c)
-                    if (!p.apply(t))
-                        res.add(t);
-        }
-
-        return res;
-    }
-
-    /**
      * Gets closure which converts node to node ID.
      *
      * @return Closure which converts node to node ID.
@@ -2278,24 +2224,6 @@ public class GridFunc {
         return new C1<T, String>() {
             @Override public String apply(@Nullable T t) {
                 return String.valueOf(t); // This is null-safe.
-            }
-        };
-    }
-
-    /**
-     * Gets predicate (not peer-deployable) that returns {@code true} if its free variable is contained
-     * in given collection.
-     *
-     * @param c Collection to check for containment.
-     * @param <T> Type of the free variable for the predicate and type of the
-     *      collection elements.
-     * @return Predicate (not peer-deployable) that returns {@code true} if its free variable is
-     *      contained in given collection.
-     */
-    public static <T> IgnitePredicate<T> in(@Nullable final Collection<? extends T> c) {
-        return isEmpty(c) ? GridFunc.<T>alwaysFalse() : new P1<T>() {
-            @Override public boolean apply(T t) {
-                return c.contains(t);
             }
         };
     }
