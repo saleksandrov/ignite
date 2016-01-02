@@ -17,12 +17,18 @@
 
 package org.apache.ignite.internal.util.tostring;
 
+import org.apache.ignite.IgniteException;
+import org.apache.ignite.internal.util.typedef.internal.SB;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.jetbrains.annotations.Nullable;
+
 import java.io.Externalizable;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.EventListener;
@@ -34,11 +40,6 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import org.apache.ignite.IgniteException;
-import org.apache.ignite.internal.util.typedef.F;
-import org.apache.ignite.internal.util.typedef.internal.SB;
-import org.apache.ignite.internal.util.typedef.internal.U;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * Provides auto-generation framework for {@code toString()} output.
@@ -453,18 +454,30 @@ public class GridToStringBuilder {
                 else {
                     Object val = field.get(obj);
 
-                    if (val instanceof Collection && ((Collection)val).size() > MAX_COL_SIZE)
-                        val = F.retain((Collection)val, true, MAX_COL_SIZE);
+                    if (val instanceof Collection && ((Collection)val).size() > MAX_COL_SIZE) {
+                        Collection val0 = new ArrayList();
+
+                        int ctr = 0;
+
+                        for (Object o : ((Collection) val)) {
+                            if (ctr++ < MAX_COL_SIZE)
+                                val0.add(o);
+                            else
+                                break;
+                        }
+
+                        val = val0;
+                    }
                     else if (val instanceof Map && ((Map)val).size() > MAX_COL_SIZE) {
                         Map tmp = U.newHashMap(MAX_COL_SIZE);
-                        int cntr = 0;
+                        int ctr = 0;
 
                         for (Object o : ((Map)val).entrySet()) {
                             Map.Entry e = (Map.Entry)o;
 
                             tmp.put(e.getKey(), e.getValue());
 
-                            if (++cntr >= MAX_COL_SIZE)
+                            if (++ctr >= MAX_COL_SIZE)
                                 break;
                         }
 

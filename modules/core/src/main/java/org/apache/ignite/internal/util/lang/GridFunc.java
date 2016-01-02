@@ -17,26 +17,6 @@
 
 package org.apache.ignite.internal.util.lang;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.ConcurrentModificationException;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.NavigableSet;
-import java.util.NoSuchElementException;
-import java.util.RandomAccess;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.ignite.cluster.ClusterNode;
 import org.apache.ignite.compute.ComputeJobResult;
 import org.apache.ignite.internal.util.F0;
@@ -68,6 +48,27 @@ import org.jetbrains.annotations.Nullable;
 import org.jsr166.ConcurrentHashMap8;
 import org.jsr166.ConcurrentLinkedDeque8;
 import org.jsr166.ThreadLocalRandom8;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.ConcurrentModificationException;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.NavigableSet;
+import java.util.NoSuchElementException;
+import java.util.RandomAccess;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Contains factory and utility methods for {@code closures}, {@code predicates}, and {@code tuples}.
@@ -924,67 +925,6 @@ public class GridFunc {
                 return id.equals(nodeId);
             }
         };
-    }
-
-    /**
-     * Retains all elements in input collection that are evaluated to {@code true}
-     * by all given predicates.
-     *
-     * @param c Input collection.
-     * @param cp If {@code true} method creates collection not modifying input, otherwise does
-     *      <tt>in-place</tt> modifications.
-     * @param p Predicates to filter by. If no predicates provides - all elements
-     *      will be retained.
-     * @param <T> Type of collections.
-     * @return Collection of retain elements.
-     */
-    public static <T> Collection<T> retain(Collection<T> c, boolean cp, @Nullable IgnitePredicate<? super T>[] p) {
-        A.notNull(c, "c");
-
-        return lose(c, cp, not(p));
-    }
-
-    /**
-     * Retains only up to first {@code num} elements in the input collection.
-     *
-     * @param c Input collection.
-     * @param cp If {@code true} method creates collection not modifying input, otherwise does
-     *      <tt>in-place</tt> modifications.
-     * @param num Maximum number of elements to retain (the actual number can be
-     *      less if the input collection contains less elements).
-     * @param <T> Type of the collections.
-     * @return Collection contains up to {@code num} first elements from the input collection.
-     */
-    public static <T> Collection<T> retain(Collection<T> c, boolean cp, int num) {
-        A.notNull(c, "c");
-        A.ensure(num >= 0, "num >= 0");
-
-        Collection<T> res;
-
-        if (!cp) {
-            res = c;
-
-            if (num < res.size()) {
-                int i = 0;
-
-                for (Iterator<T> iter = res.iterator(); iter.hasNext();) {
-                    iter.next();
-
-                    if (i++ >= num)
-                        iter.remove();
-                }
-            }
-        }
-        else {
-            res = new ArrayList<>(num);
-
-            Iterator<? extends T> iter = c.iterator();
-
-            for (int i = 0; i < num && iter.hasNext(); i++)
-                res.add(iter.next());
-        }
-
-        return res;
     }
 
     /**
