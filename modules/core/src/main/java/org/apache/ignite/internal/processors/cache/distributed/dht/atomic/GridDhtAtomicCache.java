@@ -2175,7 +2175,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
                         assert readers != null;
 
                         if (readers.contains(node.id()))
-                            filteredReaders = F.retain(readers, true, F.notEqualTo(node.id()));
+                            filteredReaders = F.viewReadOnly(readers, F.<UUID>identity(), F.notEqualTo(node.id()));
                         else
                             filteredReaders = readers;
                     }
