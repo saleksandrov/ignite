@@ -327,8 +327,20 @@ public final class GridDhtForceKeysFuture<K, V> extends GridCompoundFuture<Objec
 
         int part = cctx.affinity().partition(key);
 
-        List<ClusterNode> owners = F.isEmpty(exc) ? top.owners(part, topVer) :
-            new ArrayList<>(F.view(top.owners(part, topVer), F.notIn(exc)));
+        List<ClusterNode> owners;
+
+        if (F.isEmpty(exc))
+            owners = top.owners(part, topVer);
+        else {
+            List<ClusterNode> allOwners = top.owners(part, topVer);
+
+            owners = new ArrayList<>(allOwners.size());
+
+            for (ClusterNode node : allOwners) {
+                if (!exc.contains(node))
+                    owners.add(node);
+            }
+        }
 
         if (owners.isEmpty() || (owners.contains(loc) && cctx.rebalanceEnabled())) {
             if (log.isDebugEnabled())
