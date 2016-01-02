@@ -1274,7 +1274,7 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
                         };
 
                         log.debug("Before waiting for exchange futures [futs" +
-                            F.retain(exchFuts.values(), true, p) + ", worker=" + this + ']');
+                            F.viewReadOnly(exchFuts.values(), F.identity(), p) + ", worker=" + this + ']');
                     }
 
                     // Take next exchange future.
