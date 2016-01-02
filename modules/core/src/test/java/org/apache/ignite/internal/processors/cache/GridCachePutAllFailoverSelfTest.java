@@ -18,20 +18,6 @@
 package org.apache.ignite.internal.processors.cache;
 
 import com.google.common.collect.ImmutableMap;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
 import org.apache.ignite.IgniteCompute;
@@ -63,10 +49,26 @@ import org.apache.ignite.spi.failover.always.AlwaysFailoverSpi;
 import org.apache.ignite.testframework.GridTestUtils;
 import org.apache.ignite.testframework.junits.common.GridCommonAbstractTest;
 
-import static org.apache.ignite.cache.CacheAtomicityMode.TRANSACTIONAL;
-import static org.apache.ignite.cache.CacheMode.PARTITIONED;
-import static org.apache.ignite.cache.CachePeekMode.PRIMARY;
-import static org.apache.ignite.cache.CacheWriteSynchronizationMode.FULL_SYNC;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.apache.ignite.cache.CacheAtomicityMode.*;
+import static org.apache.ignite.cache.CacheMode.*;
+import static org.apache.ignite.cache.CachePeekMode.*;
+import static org.apache.ignite.cache.CacheWriteSynchronizationMode.*;
 
 /**
  * Tests putAll() method along with failover and different configurations.
@@ -815,12 +817,12 @@ public class GridCachePutAllFailoverSelfTest extends GridCommonAbstractTest {
 
             List<ClusterNode> cp = new ArrayList<>(top);
 
-            // Keep collection type.
-            F.retain(cp, false, new IgnitePredicate<ClusterNode>() {
-                @Override public boolean apply(ClusterNode node) {
-                    return F.isAll(node, filter);
-                }
-            });
+            Iterator<ClusterNode> iter = cp.iterator();
+
+            while (iter.hasNext()) {
+                if (!F.isAll(iter.next(), filter))
+                    iter.remove();
+            }
 
             return super.failover(ctx, cp); //use cp to ensure we don't failover on failed node
         }
