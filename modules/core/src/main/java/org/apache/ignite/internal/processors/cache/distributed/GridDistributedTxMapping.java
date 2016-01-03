@@ -79,7 +79,7 @@ public class GridDistributedTxMapping implements Externalizable {
      * @param node Mapped node.
      */
     public GridDistributedTxMapping(ClusterNode node) {
-        this(node, false);
+        this(node, false, false);
     }
 
     /**
@@ -89,8 +89,20 @@ public class GridDistributedTxMapping implements Externalizable {
      * @param near Near flag.
      */
     public GridDistributedTxMapping(ClusterNode node, boolean near) {
+        this(node, near, false);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param node Mapped node.
+     * @param near Near flag.
+     * @param clientFirst Client first flag.
+     */
+    public GridDistributedTxMapping(ClusterNode node, boolean near, boolean clientFirst) {
         this.node = node;
         this.near = near;
+        this.clientFirst = clientFirst;
 
         entries = new LeanSet<>(LeanSet.<IgniteTxEntry>linkedHashSetFactory());
     }
@@ -114,13 +126,6 @@ public class GridDistributedTxMapping implements Externalizable {
      */
     public boolean clientFirst() {
         return clientFirst;
-    }
-
-    /**
-     * @param clientFirst {@code True} if this is first mapping for optimistic tx on client node.
-     */
-    public void clientFirst(boolean clientFirst) {
-        this.clientFirst = clientFirst;
     }
 
     /**

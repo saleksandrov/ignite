@@ -560,7 +560,11 @@ public class GridNearOptimisticSerializableTxPrepareFuture extends GridNearOptim
         GridDistributedTxMapping cur = curMapping.get(key);
 
         if (cur == null) {
-            cur = new GridDistributedTxMapping(primary, cacheCtx.isNear());
+            cur = new GridDistributedTxMapping(
+                primary,
+                cacheCtx.isNear(), /* Near */
+                !topLocked && cctx.kernalContext().clientNode() /* Client first. */
+            );
 
             curMapping.put(key, cur);
 
@@ -570,8 +574,6 @@ public class GridNearOptimisticSerializableTxPrepareFuture extends GridNearOptim
                 else if (entry.context().isColocated())
                     tx.colocatedLocallyMapped(true);
             }
-
-            cur.clientFirst(!topLocked && cctx.kernalContext().clientNode());
 
             cur.last(true);
         }
