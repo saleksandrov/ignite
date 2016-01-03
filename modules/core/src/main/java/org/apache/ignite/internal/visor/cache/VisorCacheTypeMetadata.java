@@ -190,7 +190,7 @@ public class VisorCacheTypeMetadata implements Serializable {
 
         Collection<QueryIndex> qryIdxs = q.getIndexes();
 
-        metadata.grps = new LinkedHashMap<>(qryIdxs.size());
+        metadata.grps = U.newLinkedHashMap(qryIdxs.size());
 
         for (QueryIndex qryIdx : qryIdxs) {
             LinkedHashMap<String, Boolean> qryIdxFlds = qryIdx.getFields();
@@ -253,7 +253,7 @@ public class VisorCacheTypeMetadata implements Serializable {
      * @return Map with string class name.
      */
     private static Map<String, String> convertFieldsMap(Map<String, Class<?>> base) {
-        Map<String, String> res = new LinkedHashMap<>(base.size());
+        Map<String, String> res = U.newLinkedHashMap(base.size());
 
         for (Map.Entry<String, Class<?>> e : base.entrySet())
             res.put(e.getKey(), U.compact(e.getValue().getName()));
@@ -269,11 +269,11 @@ public class VisorCacheTypeMetadata implements Serializable {
      */
     private static Map<String, LinkedHashMap<String, IgniteBiTuple<String, Boolean>>> convertGrpsMap(
         Map<String, LinkedHashMap<String, IgniteBiTuple<Class<?>, Boolean>>> base) {
-        Map<String, LinkedHashMap<String, IgniteBiTuple<String, Boolean>>> res = new LinkedHashMap<>(base.size());
+        Map<String, LinkedHashMap<String, IgniteBiTuple<String, Boolean>>> res = U.newLinkedHashMap(base.size());
 
         for (Map.Entry<String, LinkedHashMap<String, IgniteBiTuple<Class<?>, Boolean>>> e : base.entrySet()) {
             LinkedHashMap<String, IgniteBiTuple<Class<?>, Boolean>> intBase = e.getValue();
-            LinkedHashMap<String, IgniteBiTuple<String, Boolean>> intRes = new LinkedHashMap<>(intBase.size());
+            LinkedHashMap<String, IgniteBiTuple<String, Boolean>> intRes = U.newLinkedHashMap(intBase.size());
 
             for (Map.Entry<String, IgniteBiTuple<Class<?>, Boolean>> intE : intBase.entrySet()) {
                 IgniteBiTuple<Class<?>, Boolean> val = intE.getValue();

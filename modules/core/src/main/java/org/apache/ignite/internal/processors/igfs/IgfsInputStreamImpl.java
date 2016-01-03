@@ -20,7 +20,6 @@ package org.apache.ignite.internal.processors.igfs;
 import java.io.EOFException;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -142,7 +141,7 @@ public class IgfsInputStreamImpl extends IgfsInputStreamAdapter {
 
         maxLocCacheSize = (prefetchBlocks > 0 ? prefetchBlocks : 1) * 3 / 2;
 
-        locCache = new LinkedHashMap<>(maxLocCacheSize, 1.0f);
+        locCache = U.newLinkedHashMap(maxLocCacheSize);
 
         pendingFuts = new GridConcurrentHashSet<>(prefetchBlocks > 0 ? prefetchBlocks : 1);
     }

@@ -23,7 +23,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -1232,7 +1231,7 @@ public class GridLocalAtomicCache<K, V> extends GridCacheAdapter<K, V> {
                             }
 
                             if (putMap == null) {
-                                putMap = new LinkedHashMap<>(size, 1.0f);
+                                putMap = U.newLinkedHashMap(size);
                                 writeVals = new ArrayList<>(size);
                             }
 
@@ -1268,7 +1267,7 @@ public class GridLocalAtomicCache<K, V> extends GridCacheAdapter<K, V> {
                         }
 
                         if (putMap == null) {
-                            putMap = new LinkedHashMap<>(size, 1.0f);
+                            putMap = U.newLinkedHashMap(size);
                             writeVals = new ArrayList<>(size);
                         }
 

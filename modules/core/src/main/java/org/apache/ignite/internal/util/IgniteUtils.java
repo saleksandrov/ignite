@@ -5024,7 +5024,8 @@ public abstract class IgniteUtils {
         if (size == -1)
             return null;
 
-        LinkedHashMap<K, V> map = new LinkedHashMap<>(size, 1.0f);
+        /// TODO: CAREFUL!
+        LinkedHashMap<K, V> map = U.newLinkedHashMap(size);
 
         for (int i = 0; i < size; i++)
             map.put((K)in.readObject(), (V)in.readObject());
