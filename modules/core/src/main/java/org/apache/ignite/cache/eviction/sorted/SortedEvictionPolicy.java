@@ -33,6 +33,7 @@ import org.apache.ignite.cache.eviction.EvictableEntry;
 import org.apache.ignite.cache.eviction.EvictionPolicy;
 import org.apache.ignite.internal.util.GridConcurrentSkipListSet;
 import org.apache.ignite.internal.util.typedef.internal.A;
+import org.apache.ignite.internal.util.typedef.internal.U;
 import org.jetbrains.annotations.Nullable;
 import org.jsr166.LongAdder8;
 
@@ -197,7 +198,7 @@ public class SortedEvictionPolicy<K, V> implements EvictionPolicy<K, V>, SortedE
      * @return Read-only view of backed queue.
      */
     public Collection<EvictableEntry<K, V>> queue() {
-        Set<EvictableEntry<K, V>> cp = new LinkedHashSet<>();
+        Set<EvictableEntry<K, V>> cp = U.newLinkedHashSet(set.size());
 
         for (Holder<K, V> holder : set)
             cp.add(holder.entry);

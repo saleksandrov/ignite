@@ -65,7 +65,7 @@ public class LeanSet<T> implements Set<T> {
     private Object target;
 
     /** Current state.*/
-    private State state;
+    private State state = State.EMPTY;
 
     /**
      * Default constructor. Falls-back to HashSet if needed.

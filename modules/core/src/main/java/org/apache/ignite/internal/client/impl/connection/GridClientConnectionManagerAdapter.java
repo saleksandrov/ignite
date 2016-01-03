@@ -315,7 +315,7 @@ public abstract class GridClientConnectionManagerAdapter implements GridClientCo
         boolean sameHost = node.attributes().isEmpty() ||
             F.containsAny(U.allLocalMACs(), node.attribute(ATTR_MACS).toString().split(", "));
 
-        Collection<InetSocketAddress> srvs = new LinkedHashSet<>();
+        Collection<InetSocketAddress> srvs = U.newLinkedHashSet(resolvedEndpoints.size());
 
         if (sameHost) {
             Collections.sort(resolvedEndpoints, U.inetAddressesComparator(true));
