@@ -372,11 +372,11 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
 
                             boolean modified = false;
 
-                             for (T2<EntryProcessor<Object, Object, Object>, Object[]> t : txEntry.entryProcessors()) {
-                                 CacheInvokeEntry<Object, Object> invokeEntry = new CacheInvokeEntry<>(
-                                     txEntry.context(), key, val, txEntry.cached().version(), txEntry.keepBinary());
+                            for (T2<EntryProcessor<Object, Object, Object>, Object[]> t : txEntry.entryProcessors()) {
+                                CacheInvokeEntry<Object, Object> invokeEntry = new CacheInvokeEntry<>(
+                                    txEntry.context(), key, val, txEntry.cached().version(), txEntry.keepBinary());
 
-                                 try {
+                                try {
                                     EntryProcessor<Object, Object, Object> processor = t.get1();
 
                                     procRes = processor.process(invokeEntry, t.get2());
@@ -389,7 +389,7 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
                                     break;
                                 }
 
-                                 modified |= invokeEntry.modified();
+                                modified |= invokeEntry.modified();
                             }
 
                             if (modified)
@@ -1213,10 +1213,10 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
                                 if (entry.explicitVersion() == null) {
                                     GridCacheMvccCandidate added = entry.cached().candidate(version());
 
-                                assert added != null : "Null candidate for non-group-lock entry " +
-                                    "[added=" + added + ", entry=" + entry + ']';
-                                assert added.dhtLocal() : "Got non-dht-local candidate for prepare future" +
-                                    "[added=" + added + ", entry=" + entry + ']';
+                                    assert added != null : "Null candidate for non-group-lock entry " +
+                                        "[added=" + added + ", entry=" + entry + ']';
+                                    assert added.dhtLocal() : "Got non-dht-local candidate for prepare future" +
+                                        "[added=" + added + ", entry=" + entry + ']';
 
                                     if (added != null && added.ownerVersion() != null)
                                         req.owned(entry.txKey(), added.ownerVersion());
@@ -1501,12 +1501,37 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
 
                 // Process invalid partitions (no need to remap).
                 // Keep this loop for backward compatibility.
-                if (!F.isEmpty(res.invalidPartitions()))
-                    dhtMapping.removeInvalidPartitions(res.invalidPartitions());
+                if (!F.isEmpty(res.invalidPartitions())) {
+                    for (Iterator<IgniteTxEntry> it = dhtMapping.entries().iterator(); it.hasNext();) {
+                        IgniteTxEntry entry  = it.next();
+
+                        if (res.invalidPartitions().contains(entry.cached().partition())) {
+                            it.remove();
+
+                            if (log.isDebugEnabled())
+                                log.debug("Removed mapping for entry from dht mapping [key=" + entry.key() +
+                                    ", tx=" + tx + ", dhtMapping=" + dhtMapping + ']');
+                        }
+                    }
+                }
 
                 // Process invalid partitions (no need to remap).
                 if (!F.isEmpty(res.invalidPartitionsByCacheId())) {
-                    dhtMapping.removeInvalidPartitionsByCacheId(res.invalidPartitionsByCacheId());
+                    Map<Integer, int[]> invalidPartsMap = res.invalidPartitionsByCacheId();
+
+                    for (Iterator<IgniteTxEntry> it = dhtMapping.entries().iterator(); it.hasNext();) {
+                        IgniteTxEntry entry  = it.next();
+
+                        int[] invalidParts = invalidPartsMap.get(entry.cacheId());
+
+                        if (invalidParts != null && F.contains(invalidParts, entry.cached().partition())) {
+                            it.remove();
+
+                            if (log.isDebugEnabled())
+                                log.debug("Removed mapping for entry from dht mapping [key=" + entry.key() +
+                                    ", tx=" + tx + ", dhtMapping=" + dhtMapping + ']');
+                        }
+                    }
 
                     if (dhtMapping.empty()) {
                         dhtMap.remove(nodeId);
