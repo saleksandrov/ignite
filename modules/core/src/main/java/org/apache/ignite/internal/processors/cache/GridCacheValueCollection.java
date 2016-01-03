@@ -18,7 +18,6 @@
 package org.apache.ignite.internal.processors.cache;
 
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -28,6 +27,7 @@ import org.apache.ignite.internal.util.GridSerializableCollection;
 import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.internal.A;
 import org.apache.ignite.internal.util.typedef.internal.CU;
+import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.lang.IgnitePredicate;
 import org.jetbrains.annotations.Nullable;
 
@@ -55,7 +55,7 @@ public class GridCacheValueCollection<K, V> extends GridSerializableCollection<V
      */
     public GridCacheValueCollection(GridCacheContext<K, V> ctx, Collection<? extends Cache.Entry<K, V>> c,
         @Nullable IgnitePredicate<Cache.Entry<K, V>>[] filter) {
-        map = new HashMap<>(c.size(), 1.0f);
+        map = U.newHashMap(c.size());
 
         assert ctx != null;
 

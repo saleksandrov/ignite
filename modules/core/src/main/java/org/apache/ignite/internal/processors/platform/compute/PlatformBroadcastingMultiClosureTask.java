@@ -19,7 +19,6 @@ package org.apache.ignite.internal.processors.platform.compute;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.ignite.cluster.ClusterNode;
@@ -27,6 +26,7 @@ import org.apache.ignite.compute.ComputeJob;
 import org.apache.ignite.compute.ComputeTaskNoResultCache;
 import org.apache.ignite.internal.processors.platform.PlatformContext;
 import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.internal.U;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -56,7 +56,7 @@ public class PlatformBroadcastingMultiClosureTask extends PlatformAbstractTask {
         assert !F.isEmpty(jobs) : "Jobs emptiness must be checked in native platform.";
 
         if (!F.isEmpty(subgrid)) {
-            Map<ComputeJob, ClusterNode> map = new HashMap<>(jobs.size() * subgrid.size(), 1);
+            Map<ComputeJob, ClusterNode> map = U.newHashMap(jobs.size() * subgrid.size());
 
             for (PlatformJob job : jobs) {
                 boolean first = true;

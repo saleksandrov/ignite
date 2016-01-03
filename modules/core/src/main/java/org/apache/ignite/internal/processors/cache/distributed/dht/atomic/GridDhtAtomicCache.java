@@ -1783,7 +1783,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
 
             if (val == null) {
                 if (needReload == null)
-                    needReload = new HashMap<>(entries.size(), 1.0f);
+                    needReload = U.newHashMap(entries.size());
 
                 needReload.put(entry.key(), i);
             }

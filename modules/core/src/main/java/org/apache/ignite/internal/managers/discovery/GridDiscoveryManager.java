@@ -2469,9 +2469,9 @@ public class GridDiscoveryManager extends GridManagerAdapter<DiscoverySpi> {
 
             allNodes = Collections.unmodifiableList(all);
 
-            Map<String, Collection<ClusterNode>> cacheMap = new HashMap<>(allNodes.size(), 1.0f);
-            Map<String, Collection<ClusterNode>> rmtCacheMap = new HashMap<>(allNodes.size(), 1.0f);
-            Map<String, Collection<ClusterNode>> dhtNodesMap = new HashMap<>(allNodes.size(), 1.0f);
+            Map<String, Collection<ClusterNode>> cacheMap = U.newHashMap(allNodes.size());
+            Map<String, Collection<ClusterNode>> rmtCacheMap = U.newHashMap(allNodes.size());
+            Map<String, Collection<ClusterNode>> dhtNodesMap = U.newHashMap(allNodes.size());
             Collection<ClusterNode> nodesWithCaches = U.newHashSet(allNodes.size());
             Collection<ClusterNode> rmtNodesWithCaches = U.newHashSet(allNodes.size());
 
@@ -2578,7 +2578,7 @@ public class GridDiscoveryManager extends GridManagerAdapter<DiscoverySpi> {
             daemonNodes = Collections.unmodifiableList(new ArrayList<>(
                 F.view(F.concat(false, loc, rmts), F.not(daemonFilter))));
 
-            Map<UUID, ClusterNode> nodeMap = new HashMap<>(allNodes().size() + daemonNodes.size(), 1.0f);
+            Map<UUID, ClusterNode> nodeMap = U.newHashMap(allNodes().size() + daemonNodes.size());
 
             for (ClusterNode n : F.concat(false, allNodes(), daemonNodes()))
                 nodeMap.put(n.id(), n);

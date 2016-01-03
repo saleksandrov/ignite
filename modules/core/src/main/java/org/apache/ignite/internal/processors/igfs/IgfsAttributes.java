@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import org.apache.ignite.igfs.IgfsMode;
 import org.apache.ignite.internal.util.typedef.internal.U;
@@ -181,7 +180,7 @@ public class IgfsAttributes implements Externalizable {
         if (in.readBoolean()) {
             int size = in.readInt();
 
-            pathModes = new HashMap<>(size, 1.0f);
+            pathModes = U.newHashMap(size);
 
             for (int i = 0; i < size; i++)
                 pathModes.put(U.readString(in), IgfsMode.fromOrdinal(in.readByte()));

@@ -17,9 +17,9 @@
 
 package org.apache.ignite.internal.binary;
 
+import org.apache.ignite.internal.util.typedef.internal.U;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -86,7 +86,7 @@ public class BinaryReaderHandles {
                 break;
 
             case MODE_SINGLE:
-                Map<Integer, Object> newData = new HashMap(3, 1.0f);
+                Map<Integer, Object> newData = U.newHashMap(3);
 
                 newData.put(singlePos, data);
                 newData.put(pos, obj);

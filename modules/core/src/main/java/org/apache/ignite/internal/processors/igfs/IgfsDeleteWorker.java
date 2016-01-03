@@ -18,7 +18,6 @@
 package org.apache.ignite.internal.processors.igfs;
 
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
@@ -271,7 +270,7 @@ public class IgfsDeleteWorker extends IgfsThread {
                 if (listing.isEmpty())
                     return true; // Directory is empty.
 
-                final Map<String, IgfsListingEntry> delListing = new HashMap<>(MAX_DELETE_BATCH, 1.0f);
+                final Map<String, IgfsListingEntry> delListing = U.newHashMap(MAX_DELETE_BATCH);
 
                 final GridCompoundFuture<Object, ?> fut = new GridCompoundFuture<>();
 

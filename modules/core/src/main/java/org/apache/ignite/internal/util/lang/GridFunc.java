@@ -22,7 +22,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.ConcurrentModificationException;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -3045,7 +3044,7 @@ public class GridFunc {
     public static <K, V> Map<K, V> zip(Collection<? extends K> keys, V dfltVal) {
         A.notNull(keys, "keys");
 
-        Map<K, V> m = new HashMap<>(keys.size(), 1.0f);
+        Map<K, V> m = U.newHashMap(keys.size());
 
         for (K k : keys)
             m.put(k, dfltVal);

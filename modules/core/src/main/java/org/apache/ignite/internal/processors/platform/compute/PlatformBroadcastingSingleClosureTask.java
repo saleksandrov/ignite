@@ -18,7 +18,6 @@
 package org.apache.ignite.internal.processors.platform.compute;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.ignite.cluster.ClusterNode;
@@ -26,6 +25,7 @@ import org.apache.ignite.compute.ComputeJob;
 import org.apache.ignite.compute.ComputeTaskNoResultCache;
 import org.apache.ignite.internal.processors.platform.PlatformContext;
 import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.internal.U;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -55,7 +55,7 @@ public class PlatformBroadcastingSingleClosureTask extends PlatformAbstractTask 
         assert job != null : "Job null-check must be performed in native platform.";
 
         if (!F.isEmpty(subgrid)) {
-            Map<ComputeJob, ClusterNode> map = new HashMap<>(subgrid.size(), 1);
+            Map<ComputeJob, ClusterNode> map = U.newHashMap(subgrid.size());
 
             boolean first = true;
 

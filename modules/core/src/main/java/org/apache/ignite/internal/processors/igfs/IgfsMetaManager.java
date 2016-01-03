@@ -1382,7 +1382,7 @@ public class IgfsMetaManager extends IgfsManager {
                     // Ensure parent is still in place.
                     if (parentInfo != null) {
                         Map<String, IgfsListingEntry> newListing =
-                            new HashMap<>(parentInfo.listing().size(), 1.0f);
+                            U.newHashMap(parentInfo.listing().size());
 
                         newListing.putAll(parentInfo.listing());
 

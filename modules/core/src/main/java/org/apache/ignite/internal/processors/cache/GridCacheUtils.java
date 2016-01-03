@@ -26,7 +26,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -1760,7 +1759,7 @@ public class GridCacheUtils {
      * @return Cache ID to partition ID array map.
      */
     public static Map<Integer, int[]> convertInvalidPartitions(Map<Integer, Set<Integer>> partsMap) {
-        Map<Integer, int[]> res = new HashMap<>(partsMap.size());
+        Map<Integer, int[]> res = U.newHashMap(partsMap.size());
 
         for (Map.Entry<Integer, Set<Integer>> entry : partsMap.entrySet()) {
             Set<Integer> parts = entry.getValue();
@@ -1859,7 +1858,7 @@ public class GridCacheUtils {
      * @return Neighbors map.
      */
     public static Map<UUID, Collection<ClusterNode>> neighbors(Collection<ClusterNode> topSnapshot) {
-        Map<String, Collection<ClusterNode>> macMap = new HashMap<>(topSnapshot.size(), 1.0f);
+        Map<String, Collection<ClusterNode>> macMap = U.newHashMap(topSnapshot.size());
 
         // Group by mac addresses.
         for (ClusterNode node : topSnapshot) {
@@ -1873,7 +1872,7 @@ public class GridCacheUtils {
             nodes.add(node);
         }
 
-        Map<UUID, Collection<ClusterNode>> neighbors = new HashMap<>(topSnapshot.size(), 1.0f);
+        Map<UUID, Collection<ClusterNode>> neighbors = U.newHashMap(topSnapshot.size());
 
         for (Collection<ClusterNode> group : macMap.values())
             for (ClusterNode node : group)

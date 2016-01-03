@@ -228,7 +228,7 @@ public class IgnitePluginProcessor extends GridProcessorAdapter {
          * @return Map extension interface to array of implementation.
          */
         public Map<Class<?>, Object[]> createExtensionMap() {
-            Map<Class<?>, Object[]> extensions = new HashMap<>(extensionsCollector.size() * 2, 0.5f);
+            Map<Class<?>, Object[]> extensions = U.newHashMap(extensionsCollector.size());
 
             for (Map.Entry<Class<?>, List<Object>> entry : extensionsCollector.entrySet()) {
                 Class<?> extensionItf = entry.getKey();

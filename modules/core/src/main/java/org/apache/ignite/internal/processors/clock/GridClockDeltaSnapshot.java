@@ -19,7 +19,6 @@ package org.apache.ignite.internal.processors.clock;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.UUID;
@@ -28,6 +27,7 @@ import org.apache.ignite.internal.IgniteInterruptedCheckedException;
 import org.apache.ignite.internal.managers.discovery.GridDiscoveryTopologySnapshot;
 import org.apache.ignite.internal.util.tostring.GridToStringExclude;
 import org.apache.ignite.internal.util.typedef.internal.S;
+import org.apache.ignite.internal.util.typedef.internal.U;
 
 /**
  * Snapshot of time deltas for given topology.
@@ -59,9 +59,9 @@ public class GridClockDeltaSnapshot {
 
         this.ver = ver;
 
-        deltas = new HashMap<>(discoSnap.topologyNodes().size(), 1.0f);
+        deltas = U.newHashMap(discoSnap.topologyNodes().size());
 
-        pendingDeltas = new HashMap<>(discoSnap.topologyNodes().size(), 1.0f);
+        pendingDeltas = U.newHashMap(discoSnap.topologyNodes().size());
 
         for (ClusterNode n : discoSnap.topologyNodes()) {
             if (!locNodeId.equals(n.id()))
