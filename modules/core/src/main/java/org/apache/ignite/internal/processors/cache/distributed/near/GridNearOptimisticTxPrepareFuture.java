@@ -552,10 +552,7 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearOptimisticTxPrepa
         if (cur == null || !cur.node().id().equals(primary.id()) || cur.near() != cacheCtx.isNear()) {
             boolean clientFirst = cur == null && !topLocked && cctx.kernalContext().clientNode();
 
-            cur = new GridDistributedTxMapping(primary);
-
-            // Initialize near flag right away.
-            cur.near(cacheCtx.isNear());
+            cur = new GridDistributedTxMapping(primary, cacheCtx.isNear());
 
             cur.clientFirst(clientFirst);
         }

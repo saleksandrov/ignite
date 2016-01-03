@@ -74,10 +74,23 @@ public class GridDistributedTxMapping implements Externalizable {
     }
 
     /**
+     * Constructor.
+     *
      * @param node Mapped node.
      */
     public GridDistributedTxMapping(ClusterNode node) {
+        this(node, false);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param node Mapped node.
+     * @param near Near flag.
+     */
+    public GridDistributedTxMapping(ClusterNode node, boolean near) {
         this.node = node;
+        this.near = near;
 
         entries = new LeanSet<>(LeanSet.<IgniteTxEntry>linkedHashSetFactory());
     }
@@ -115,13 +128,6 @@ public class GridDistributedTxMapping implements Externalizable {
      */
     public boolean near() {
         return near;
-    }
-
-    /**
-     * @param near {@code True} if mapping is for near caches, {@code false} otherwise.
-     */
-    public void near(boolean near) {
-        this.near = near;
     }
 
     /**

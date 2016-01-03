@@ -23,7 +23,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import javax.cache.expiry.ExpiryPolicy;
 import org.apache.ignite.IgniteCheckedException;
@@ -589,9 +588,7 @@ public class GridNearTxLocal extends GridDhtTxLocalAdapter {
                 GridDistributedTxMapping m = mappings.get(n.id());
 
                 if (m == null) {
-                    mappings.put(m = new GridDistributedTxMapping(n));
-
-                    m.near(map.near());
+                    mappings.put(m = new GridDistributedTxMapping(n, map.near()));
 
                     if (map.explicitLock())
                         m.markExplicitLock();
@@ -614,11 +611,9 @@ public class GridNearTxLocal extends GridDhtTxLocalAdapter {
     void addSingleEntryMapping(GridDistributedTxMapping map, IgniteTxEntry entry) {
         ClusterNode n = map.node();
 
-        GridDistributedTxMapping m = new GridDistributedTxMapping(n);
+        GridDistributedTxMapping m = new GridDistributedTxMapping(n, map.near());
 
         mappings.put(m);
-
-        m.near(map.near());
 
         if (map.explicitLock())
             m.markExplicitLock();

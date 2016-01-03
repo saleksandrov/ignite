@@ -187,9 +187,7 @@ public class GridNearPessimisticTxPrepareFuture extends GridNearTxPrepareFutureA
             GridDistributedTxMapping nodeMapping = mappings.get(key);
 
             if (nodeMapping == null) {
-                nodeMapping = new GridDistributedTxMapping(primary);
-
-                nodeMapping.near(cacheCtx.isNear());
+                nodeMapping = new GridDistributedTxMapping(primary, cacheCtx.isNear());
 
                 mappings.put(key, nodeMapping);
             }
