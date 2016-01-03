@@ -9080,6 +9080,16 @@ public abstract class IgniteUtils {
     }
 
     /**
+     * Creates new {@link HashMap} with the given size and load factor 1.
+     *
+     * @param size Expected size.
+     * @return New map.
+     */
+    public static <K, V> HashMap<K, V> newHashMapStrict(int size) {
+        return new HashMap<>(size, 1.0f);
+    }
+
+    /**
      * Creates new {@link LinkedHashMap} with expected size.
      *
      * @param expSize Expected size of created map.
@@ -9089,6 +9099,16 @@ public abstract class IgniteUtils {
      */
     public static <K, V> LinkedHashMap<K, V> newLinkedHashMap(int expSize) {
         return new LinkedHashMap<>(capacity(expSize));
+    }
+
+    /**
+     * Creates new {@link LinkedHashMap} with the given size and load factor 1.
+     *
+     * @param size Expected size.
+     * @return New map.
+     */
+    public static <K, V> HashMap<K, V> newLinkedHashMapStrict(int size) {
+        return new LinkedHashMap<>(size, 1.0f);
     }
 
     /**
@@ -9103,6 +9123,16 @@ public abstract class IgniteUtils {
     }
 
     /**
+     * Creates new {@link HashSet} with the given size and load factor 1.
+     *
+     * @param size Expected size.
+     * @return New set.
+     */
+    public static <T> HashSet<T> newHashSetStrict(int size) {
+        return new HashSet<>(size, 1.0f);
+    }
+
+    /**
      * Creates new {@link LinkedHashSet} with expected size.
      *
      * @param expSize Expected size of created map.
@@ -9111,6 +9141,16 @@ public abstract class IgniteUtils {
      */
     public static <T> LinkedHashSet<T> newLinkedHashSet(int expSize) {
         return new LinkedHashSet<>(capacity(expSize));
+    }
+
+    /**
+     * Creates new {@link LinkedHashSet} with the given size and load factor 1.
+     *
+     * @param size Expected size.
+     * @return New set.
+     */
+    public static <T> LinkedHashSet<T> newLinkedHashSetStrict(int size) {
+        return new LinkedHashSet<>(size, 1.0f);
     }
 
     /**
