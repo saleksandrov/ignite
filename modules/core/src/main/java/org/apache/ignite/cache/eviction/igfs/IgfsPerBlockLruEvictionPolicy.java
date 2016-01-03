@@ -23,7 +23,6 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -33,6 +32,7 @@ import org.apache.ignite.cache.eviction.EvictionPolicy;
 import org.apache.ignite.igfs.IgfsPath;
 import org.apache.ignite.internal.processors.cache.CacheEvictableEntryImpl;
 import org.apache.ignite.internal.processors.igfs.IgfsBlockKey;
+import org.apache.ignite.internal.util.typedef.internal.U;
 import org.jetbrains.annotations.Nullable;
 import org.jsr166.ConcurrentLinkedDeque8;
 import org.jsr166.ConcurrentLinkedDeque8.Node;
@@ -312,7 +312,7 @@ public class IgfsPerBlockLruEvictionPolicy implements EvictionPolicy<IgfsBlockKe
             Collection<String> excludePaths0 = excludePaths;
 
             if (excludePaths0 != null) {
-                excludePatterns0 = new HashSet<>(excludePaths0.size(), 1.0f);
+                excludePatterns0 = U.newHashSet(excludePaths0.size());
 
                 for (String excludePath : excludePaths0) {
                     try {

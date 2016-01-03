@@ -20,7 +20,6 @@ package org.apache.ignite.internal.processors.igfs;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -28,6 +27,7 @@ import org.apache.ignite.igfs.IgfsMode;
 import org.apache.ignite.igfs.IgfsPath;
 import org.apache.ignite.internal.util.GridBoundedConcurrentLinkedHashMap;
 import org.apache.ignite.internal.util.typedef.T2;
+import org.apache.ignite.internal.util.typedef.internal.U;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -123,7 +123,7 @@ public class IgfsModeResolver {
             Set<IgfsMode> children = childrenModesCache.get(path);
 
             if (children == null) {
-                children = new HashSet<>(IgfsMode.values().length, 1.0f);
+                children = U.newHashSet(IgfsMode.values().length);
 
                 IgfsMode pathDefault = dfltMode;
 

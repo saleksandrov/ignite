@@ -164,7 +164,7 @@ public class IgniteTxImplicitSingleStateImpl extends IgniteTxLocalStateAdapter {
         CacheStoreManager store = cacheCtx.store();
 
         if (store.configured()) {
-            HashSet<CacheStoreManager> set = new HashSet<>(3, 0.75f);
+            HashSet<CacheStoreManager> set = U.newHashSet(3);
 
             set.add(store);
 
@@ -201,7 +201,7 @@ public class IgniteTxImplicitSingleStateImpl extends IgniteTxLocalStateAdapter {
     /** {@inheritDoc} */
     @Override public Set<IgniteTxKey> writeSet() {
         if (entry != null) {
-            HashSet<IgniteTxKey> set = new HashSet<>(3, 0.75f);
+            HashSet<IgniteTxKey> set = U.newHashSet(3);
 
             set.add(entry.txKey());
 

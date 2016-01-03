@@ -425,7 +425,7 @@ public abstract class GridCacheQueueAdapter<T> extends AbstractCollection<T> imp
         long endIdx,
         int batchSize)
         throws IgniteCheckedException {
-        Set<QueueItemKey> keys = new HashSet<>(batchSize > 0 ? batchSize : 10);
+        Set<QueueItemKey> keys = U.newHashSet(batchSize > 0 ? batchSize : 10);
 
         for (long idx = startIdx; idx < endIdx; idx++) {
             keys.add(itemKey(id, name, collocated, binaryMarsh, idx));

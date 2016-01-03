@@ -340,7 +340,7 @@ public class TcpDiscoveryMulticastIpFinder extends TcpDiscoveryVmIpFinder {
 
         addrSnds = new ArrayList<>(locAddrs.size());
 
-        reqItfs = new HashSet<>(locAddrs.size()); // Interfaces used to send requests.
+        reqItfs = U.newHashSet(locAddrs.size()); // Interfaces used to send requests.
 
         for (String locAddr : locAddrs) {
             InetAddress addr;

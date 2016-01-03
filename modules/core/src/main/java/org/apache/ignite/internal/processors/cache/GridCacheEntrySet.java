@@ -19,7 +19,6 @@ package org.apache.ignite.internal.processors.cache;
 
 import java.util.AbstractSet;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import javax.cache.Cache;
@@ -27,6 +26,7 @@ import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.IgniteException;
 import org.apache.ignite.internal.IgniteKernal;
 import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.lang.IgnitePredicate;
 import org.jetbrains.annotations.Nullable;
 
@@ -50,7 +50,7 @@ public class GridCacheEntrySet<K, V> extends AbstractSet<Cache.Entry<K, V>> {
      */
     public GridCacheEntrySet(GridCacheContext<K, V> ctx, Collection<? extends Cache.Entry<K, V>> c,
         @Nullable IgnitePredicate<Cache.Entry<K, V>>... filter) {
-        set = new HashSet<>(c.size(), 1.0f);
+        set = U.newHashSet(c.size());
 
         assert ctx != null;
 
