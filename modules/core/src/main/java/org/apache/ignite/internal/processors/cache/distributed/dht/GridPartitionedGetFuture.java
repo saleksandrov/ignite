@@ -486,7 +486,7 @@ public class GridPartitionedGetFuture<K, V> extends CacheDistributedGetFutureAda
                 LinkedHashMap<KeyCacheObject, Boolean> old = mappings.get(node);
 
                 if (old == null)
-                    mappings.put(node, old = U.newLinkedHashMap(3));
+                    mappings.put(node, old = U.newLinkedHashMapStrict(3));
 
                 old.put(key, false);
 

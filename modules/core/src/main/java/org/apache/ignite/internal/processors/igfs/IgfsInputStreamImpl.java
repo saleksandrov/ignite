@@ -141,7 +141,7 @@ public class IgfsInputStreamImpl extends IgfsInputStreamAdapter {
 
         maxLocCacheSize = (prefetchBlocks > 0 ? prefetchBlocks : 1) * 3 / 2;
 
-        locCache = U.newLinkedHashMap(maxLocCacheSize);
+        locCache = U.newLinkedHashMapStrict(maxLocCacheSize);
 
         pendingFuts = new GridConcurrentHashSet<>(prefetchBlocks > 0 ? prefetchBlocks : 1);
     }

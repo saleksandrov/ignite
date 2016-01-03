@@ -123,7 +123,7 @@ public class IgfsModeResolver {
             Set<IgfsMode> children = childrenModesCache.get(path);
 
             if (children == null) {
-                children = U.newHashSet(IgfsMode.values().length);
+                children = U.newHashSetStrict(IgfsMode.values().length);
 
                 IgfsMode pathDefault = dfltMode;
 

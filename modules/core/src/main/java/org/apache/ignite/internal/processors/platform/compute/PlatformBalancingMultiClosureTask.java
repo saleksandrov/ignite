@@ -63,7 +63,7 @@ public class PlatformBalancingMultiClosureTask extends PlatformAbstractTask {
         assert !F.isEmpty(jobs) : "Jobs emptiness must be checked in native platform.";
 
         if (!F.isEmpty(subgrid)) {
-            Map<ComputeJob, ClusterNode> map = U.newHashMap(jobs.size());
+            Map<ComputeJob, ClusterNode> map = U.newHashMapStrict(jobs.size());
 
             for (PlatformJob job : jobs)
                 map.put(job, lb.getBalancedNode(job, null));

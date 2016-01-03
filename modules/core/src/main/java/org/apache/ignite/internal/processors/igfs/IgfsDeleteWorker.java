@@ -270,7 +270,7 @@ public class IgfsDeleteWorker extends IgfsThread {
                 if (listing.isEmpty())
                     return true; // Directory is empty.
 
-                final Map<String, IgfsListingEntry> delListing = U.newHashMap(MAX_DELETE_BATCH);
+                final Map<String, IgfsListingEntry> delListing = U.newHashMapStrict(MAX_DELETE_BATCH);
 
                 final GridCompoundFuture<Object, ?> fut = new GridCompoundFuture<>();
 

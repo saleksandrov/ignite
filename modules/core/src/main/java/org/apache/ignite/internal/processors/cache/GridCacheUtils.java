@@ -1858,7 +1858,7 @@ public class GridCacheUtils {
      * @return Neighbors map.
      */
     public static Map<UUID, Collection<ClusterNode>> neighbors(Collection<ClusterNode> topSnapshot) {
-        Map<String, Collection<ClusterNode>> macMap = U.newHashMap(topSnapshot.size());
+        Map<String, Collection<ClusterNode>> macMap = U.newHashMapStrict(topSnapshot.size());
 
         // Group by mac addresses.
         for (ClusterNode node : topSnapshot) {
@@ -1872,7 +1872,7 @@ public class GridCacheUtils {
             nodes.add(node);
         }
 
-        Map<UUID, Collection<ClusterNode>> neighbors = U.newHashMap(topSnapshot.size());
+        Map<UUID, Collection<ClusterNode>> neighbors = U.newHashMapStrict(topSnapshot.size());
 
         for (Collection<ClusterNode> group : macMap.values())
             for (ClusterNode node : group)

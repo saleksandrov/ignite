@@ -559,7 +559,7 @@ public class GridLocalAtomicCache<K, V> extends GridCacheAdapter<K, V> {
 
         UUID subjId = ctx.subjectIdPerCall(null, opCtx);
 
-        Map<K, V> vals = U.newHashMap(keys.size());
+        Map<K, V> vals = U.newHashMapStrict(keys.size());
 
         if (keyCheck)
             validateCacheKeys(keys);
@@ -1231,7 +1231,7 @@ public class GridLocalAtomicCache<K, V> extends GridCacheAdapter<K, V> {
                             }
 
                             if (putMap == null) {
-                                putMap = U.newLinkedHashMap(size);
+                                putMap = U.newLinkedHashMapStrict(size);
                                 writeVals = new ArrayList<>(size);
                             }
 
@@ -1267,7 +1267,7 @@ public class GridLocalAtomicCache<K, V> extends GridCacheAdapter<K, V> {
                         }
 
                         if (putMap == null) {
-                            putMap = U.newLinkedHashMap(size);
+                            putMap = U.newLinkedHashMapStrict(size);
                             writeVals = new ArrayList<>(size);
                         }
 

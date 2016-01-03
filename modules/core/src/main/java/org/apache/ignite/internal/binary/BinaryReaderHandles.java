@@ -86,7 +86,7 @@ public class BinaryReaderHandles {
                 break;
 
             case MODE_SINGLE:
-                Map<Integer, Object> newData = U.newHashMap(3);
+                Map<Integer, Object> newData = U.newHashMapStrict(3);
 
                 newData.put(singlePos, data);
                 newData.put(pos, obj);

@@ -59,9 +59,9 @@ public class GridClockDeltaSnapshot {
 
         this.ver = ver;
 
-        deltas = U.newHashMap(discoSnap.topologyNodes().size());
+        deltas = U.newHashMapStrict(discoSnap.topologyNodes().size());
 
-        pendingDeltas = U.newHashMap(discoSnap.topologyNodes().size());
+        pendingDeltas = U.newHashMapStrict(discoSnap.topologyNodes().size());
 
         for (ClusterNode n : discoSnap.topologyNodes()) {
             if (!locNodeId.equals(n.id()))

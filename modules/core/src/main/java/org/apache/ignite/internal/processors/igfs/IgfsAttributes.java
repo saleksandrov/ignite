@@ -180,7 +180,7 @@ public class IgfsAttributes implements Externalizable {
         if (in.readBoolean()) {
             int size = in.readInt();
 
-            pathModes = U.newHashMap(size);
+            pathModes = U.newHashMapStrict(size);
 
             for (int i = 0; i < size; i++)
                 pathModes.put(U.readString(in), IgfsMode.fromOrdinal(in.readByte()));

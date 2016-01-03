@@ -62,7 +62,7 @@ public class PlatformBalancingSingleClosureTask extends PlatformAbstractTask {
         assert job != null : "Job null-check must be performed in native platform.";
 
         if (!F.isEmpty(subgrid)) {
-            Map<ComputeJob, ClusterNode> map = U.newHashMap(11);
+            Map<ComputeJob, ClusterNode> map = U.newHashMapStrict(11);
 
             map.put(job, lb.getBalancedNode(job, null));
 

@@ -5024,8 +5024,7 @@ public abstract class IgniteUtils {
         if (size == -1)
             return null;
 
-        /// TODO: CAREFUL!
-        LinkedHashMap<K, V> map = U.newLinkedHashMap(size);
+        LinkedHashMap<K, V> map = U.newLinkedHashMapStrict(size);
 
         for (int i = 0; i < size; i++)
             map.put((K)in.readObject(), (V)in.readObject());
@@ -9107,7 +9106,7 @@ public abstract class IgniteUtils {
      * @param size Expected size.
      * @return New map.
      */
-    public static <K, V> HashMap<K, V> newLinkedHashMapStrict(int size) {
+    public static <K, V> LinkedHashMap<K, V> newLinkedHashMapStrict(int size) {
         return new LinkedHashMap<>(size, 1.0f);
     }
 

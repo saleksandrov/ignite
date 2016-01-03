@@ -160,7 +160,7 @@ public class GridTaskSessionImpl implements GridTaskSessionInternal {
         this.ctx = ctx;
 
         if (attrs != null && !attrs.isEmpty()) {
-            this.attrs = U.newHashMap(attrs.size());
+            this.attrs = U.newHashMapStrict(attrs.size());
 
             this.attrs.putAll(attrs);
         }
@@ -363,7 +363,7 @@ public class GridTaskSessionImpl implements GridTaskSessionInternal {
             if (closed)
                 throw new InterruptedException("Session was closed: " + this);
 
-            Map<Object, Object> retVal = U.newHashMap(keys.size());
+            Map<Object, Object> retVal = U.newHashMapStrict(keys.size());
 
             if (attrs != null)
                 for (Object key : keys)
@@ -555,7 +555,7 @@ public class GridTaskSessionImpl implements GridTaskSessionInternal {
         // will happen in 'setInternal(...)' method.
         synchronized (mux) {
             if (this.attrs == null)
-                this.attrs = U.newHashMap(attrs.size());
+                this.attrs = U.newHashMapStrict(attrs.size());
 
             this.attrs.putAll(attrs);
         }
@@ -594,7 +594,7 @@ public class GridTaskSessionImpl implements GridTaskSessionInternal {
 
         synchronized (mux) {
             if (this.attrs == null)
-                this.attrs = U.newHashMap(attrs.size());
+                this.attrs = U.newHashMapStrict(attrs.size());
 
             this.attrs.putAll(attrs);
 

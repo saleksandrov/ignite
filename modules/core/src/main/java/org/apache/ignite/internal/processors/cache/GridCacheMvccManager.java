@@ -1209,7 +1209,7 @@ public class GridCacheMvccManager extends GridCacheSharedManagerAdapter {
         /** {@inheritDoc} */
         @Override public String toString() {
             if (!pendingLocks.isEmpty()) {
-                Map<GridCacheVersion, IgniteInternalTx> txs = U.newHashMap(1);
+                Map<GridCacheVersion, IgniteInternalTx> txs = U.newHashMapStrict(1);
 
                 for (Collection<GridCacheMvccCandidate> cands : pendingLocks.values())
                     for (GridCacheMvccCandidate c : cands)

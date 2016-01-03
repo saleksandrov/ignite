@@ -608,7 +608,7 @@ public final class GridNearGetFuture<K, V> extends CacheDistributedGetFutureAdap
                     LinkedHashMap<KeyCacheObject, Boolean> old = mappings.get(affNode);
 
                     if (old == null)
-                        mappings.put(affNode, old = U.newLinkedHashMap(3));
+                        mappings.put(affNode, old = U.newLinkedHashMapStrict(3));
 
                     old.put(key, addRdr);
                 }

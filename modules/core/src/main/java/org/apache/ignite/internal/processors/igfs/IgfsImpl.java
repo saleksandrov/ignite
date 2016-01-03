@@ -213,7 +213,7 @@ public final class IgfsImpl implements IgfsEx {
             dfltMode = cfg.getDefaultMode();
 
         Map<String, IgfsMode> cfgModes = new LinkedHashMap<>();
-        Map<String, IgfsMode> dfltModes = U.newLinkedHashMap(4);
+        Map<String, IgfsMode> dfltModes = U.newLinkedHashMapStrict(4);
 
         if (cfg.isInitializeDefaultPathModes()) {
             dfltModes.put("/ignite/primary", PRIMARY);

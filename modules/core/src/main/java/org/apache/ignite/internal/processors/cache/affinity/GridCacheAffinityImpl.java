@@ -173,7 +173,7 @@ public class GridCacheAffinityImpl<K, V> implements Affinity<K> {
         int nodesCnt = cctx.discovery().cacheAffinityNodes(cctx.name(), topVer).size();
 
         // Must return empty map if no alive nodes present or keys is empty.
-        Map<ClusterNode, Collection<K>> res = U.newHashMap(nodesCnt);
+        Map<ClusterNode, Collection<K>> res = U.newHashMapStrict(nodesCnt);
 
         for (K key : keys) {
             ClusterNode primary = cctx.affinity().primary(key, topVer);

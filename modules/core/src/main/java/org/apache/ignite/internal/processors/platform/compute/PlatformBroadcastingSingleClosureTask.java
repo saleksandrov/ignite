@@ -55,7 +55,7 @@ public class PlatformBroadcastingSingleClosureTask extends PlatformAbstractTask 
         assert job != null : "Job null-check must be performed in native platform.";
 
         if (!F.isEmpty(subgrid)) {
-            Map<ComputeJob, ClusterNode> map = U.newHashMap(subgrid.size());
+            Map<ComputeJob, ClusterNode> map = U.newHashMapStrict(subgrid.size());
 
             boolean first = true;
 

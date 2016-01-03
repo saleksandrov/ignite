@@ -55,7 +55,7 @@ public class GridCacheValueCollection<K, V> extends GridSerializableCollection<V
      */
     public GridCacheValueCollection(GridCacheContext<K, V> ctx, Collection<? extends Cache.Entry<K, V>> c,
         @Nullable IgnitePredicate<Cache.Entry<K, V>>[] filter) {
-        map = U.newHashMap(c.size());
+        map = U.newHashMapStrict(c.size());
 
         assert ctx != null;
 

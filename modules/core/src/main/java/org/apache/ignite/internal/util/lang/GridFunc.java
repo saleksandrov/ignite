@@ -3044,7 +3044,7 @@ public class GridFunc {
     public static <K, V> Map<K, V> zip(Collection<? extends K> keys, V dfltVal) {
         A.notNull(keys, "keys");
 
-        Map<K, V> m = U.newHashMap(keys.size());
+        Map<K, V> m = U.newHashMapStrict(keys.size());
 
         for (K k : keys)
             m.put(k, dfltVal);

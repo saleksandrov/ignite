@@ -735,7 +735,7 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter implements Ig
 
                             if (writeStore.isWriteThrough()) {
                                 if (putMap == null)
-                                    putMap = U.newLinkedHashMap(writeMap().size());
+                                    putMap = U.newLinkedHashMapStrict(writeMap().size());
 
                                 putMap.put(key, F.<Object, GridCacheVersion>t(val, ver));
                             }

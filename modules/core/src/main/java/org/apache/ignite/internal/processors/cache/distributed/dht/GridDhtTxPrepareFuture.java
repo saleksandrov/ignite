@@ -388,11 +388,11 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
 
                             boolean modified = false;
 
-                            for (T2<EntryProcessor<Object, Object, Object>, Object[]> t : txEntry.entryProcessors()) {
-                                CacheInvokeEntry<Object, Object> invokeEntry = new CacheInvokeEntry<>(
-                                    txEntry.context(), key, val, txEntry.cached().version(), txEntry.keepBinary());
+                             for (T2<EntryProcessor<Object, Object, Object>, Object[]> t : txEntry.entryProcessors()) {
+                                 CacheInvokeEntry<Object, Object> invokeEntry = new CacheInvokeEntry<>(
+                                     txEntry.context(), key, val, txEntry.cached().version(), txEntry.keepBinary());
 
-                                try {
+                                 try {
                                     EntryProcessor<Object, Object, Object> processor = t.get1();
 
                                     procRes = processor.process(invokeEntry, t.get2());
@@ -405,7 +405,7 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
                                     break;
                                 }
 
-                                modified |= invokeEntry.modified();
+                                 modified |= invokeEntry.modified();
                             }
 
                             if (modified)
@@ -1230,10 +1230,10 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
                                 if (entry.explicitVersion() == null) {
                                     GridCacheMvccCandidate added = entry.cached().candidate(version());
 
-                                    assert added != null : "Null candidate for non-group-lock entry " +
-                                        "[added=" + added + ", entry=" + entry + ']';
-                                    assert added.dhtLocal() : "Got non-dht-local candidate for prepare future" +
-                                        "[added=" + added + ", entry=" + entry + ']';
+                                assert added != null : "Null candidate for non-group-lock entry " +
+                                    "[added=" + added + ", entry=" + entry + ']';
+                                assert added.dhtLocal() : "Got non-dht-local candidate for prepare future" +
+                                    "[added=" + added + ", entry=" + entry + ']';
 
                                     if (added != null && added.ownerVersion() != null)
                                         req.owned(entry.txKey(), added.ownerVersion());

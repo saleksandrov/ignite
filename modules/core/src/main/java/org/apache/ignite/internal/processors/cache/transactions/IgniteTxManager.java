@@ -1706,7 +1706,7 @@ public class IgniteTxManager extends GridCacheSharedManagerAdapter {
                 }
 
                 if (processedVers == null)
-                    processedVers = U.newHashSet(txNum);
+                    processedVers = U.newHashSetStrict(txNum);
 
                 processedVers.add(tx.xidVersion());
             }

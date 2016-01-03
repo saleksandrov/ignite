@@ -312,7 +312,7 @@ public class IgfsPerBlockLruEvictionPolicy implements EvictionPolicy<IgfsBlockKe
             Collection<String> excludePaths0 = excludePaths;
 
             if (excludePaths0 != null) {
-                excludePatterns0 = U.newHashSet(excludePaths0.size());
+                excludePatterns0 = U.newHashSetStrict(excludePaths0.size());
 
                 for (String excludePath : excludePaths0) {
                     try {

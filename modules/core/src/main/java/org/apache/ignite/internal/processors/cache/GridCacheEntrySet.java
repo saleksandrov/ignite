@@ -50,7 +50,7 @@ public class GridCacheEntrySet<K, V> extends AbstractSet<Cache.Entry<K, V>> {
      */
     public GridCacheEntrySet(GridCacheContext<K, V> ctx, Collection<? extends Cache.Entry<K, V>> c,
         @Nullable IgnitePredicate<Cache.Entry<K, V>>... filter) {
-        set = U.newHashSet(c.size());
+        set = U.newHashSetStrict(c.size());
 
         assert ctx != null;
 

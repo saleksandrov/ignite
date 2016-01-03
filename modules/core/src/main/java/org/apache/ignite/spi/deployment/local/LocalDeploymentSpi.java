@@ -230,7 +230,7 @@ public class LocalDeploymentSpi extends IgniteSpiAdapter implements DeploymentSp
 
         // Maps resources to classes.
         // Map may contain 2 entries for one class.
-        Map<String, String> regRsrcs = U.newHashMap(2);
+        Map<String, String> regRsrcs = U.newHashMapStrict(2);
 
         // Check alias collision for added classes.
         String alias = null;

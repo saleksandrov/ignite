@@ -1642,7 +1642,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
                         }
 
                         if (putMap == null) {
-                            putMap = U.newLinkedHashMap(size);
+                            putMap = U.newLinkedHashMapStrict(size);
                             writeVals = new ArrayList<>(size);
                         }
 
@@ -1687,7 +1687,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
                     assert updated != null;
 
                     if (putMap == null) {
-                        putMap = U.newLinkedHashMap(size);
+                        putMap = U.newLinkedHashMapStrict(size);
                         writeVals = new ArrayList<>(size);
                     }
 
@@ -1782,7 +1782,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
 
             if (val == null) {
                 if (needReload == null)
-                    needReload = U.newHashMap(entries.size());
+                    needReload = U.newHashMapStrict(entries.size());
 
                 needReload.put(entry.key(), i);
             }
@@ -2415,7 +2415,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
             for (GridCacheMapEntry entry : locked) {
                 if (entry != null && entry.deleted()) {
                     if (skip == null)
-                        skip = U.newHashSet(locked.size());
+                        skip = U.newHashSetStrict(locked.size());
 
                     skip.add(entry.key());
                 }
