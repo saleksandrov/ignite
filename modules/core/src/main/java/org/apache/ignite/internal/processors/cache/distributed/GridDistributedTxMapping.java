@@ -206,14 +206,6 @@ public class GridDistributedTxMapping implements Externalizable {
         if (keys == null || keys.isEmpty())
             return;
 
-        evictReaders(keys, entries);
-    }
-
-    /**
-     * @param keys Keys to evict readers for.
-     * @param entries Entries to check.
-     */
-    private void evictReaders(Collection<IgniteTxKey> keys, @Nullable Collection<IgniteTxEntry> entries) {
         if (entries == null || entries.isEmpty())
             return;
 
