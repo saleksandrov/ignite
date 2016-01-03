@@ -589,8 +589,16 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
     @Override public List<String> getLifecycleBeansFormatted() {
         LifecycleBean[] beans = cfg.getLifecycleBeans();
 
-        return F.isEmpty(beans) ? Collections.<String>emptyList() :
-            (List<String>)F.transform(beans, F.<LifecycleBean>string());
+        if (F.isEmpty(beans))
+            return Collections.emptyList();
+        else {
+            List<String> res = new ArrayList<>(beans.length);
+
+            for (LifecycleBean bean : beans)
+                res.add(String.valueOf(bean));
+
+            return res;
+        }
     }
 
     /**
@@ -788,7 +796,7 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
 
             startProcessor(new ClusterProcessor(ctx));
 
-            fillNodeAttributes();
+            fillNodeAttributes(notifyEnabled);
 
             U.onGridStart();
 
@@ -1201,10 +1209,11 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
     /**
      * Creates attributes map and fills it in.
      *
+     * @param notifyEnabled Update notifier flag.
      * @throws IgniteCheckedException thrown if was unable to set up attribute.
      */
     @SuppressWarnings({"SuspiciousMethodCalls", "unchecked", "TypeMayBeWeakened"})
-    private void fillNodeAttributes() throws IgniteCheckedException {
+    private void fillNodeAttributes(boolean notifyEnabled) throws IgniteCheckedException {
         final String[] incProps = cfg.getIncludeProperties();
 
         try {
@@ -1241,6 +1250,8 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
                     ctx.addNodeAttribute(key, e.getValue());
                 }
             }
+
+            ctx.addNodeAttribute(IgniteNodeAttributes.ATTR_UPDATE_NOTIFIER_ENABLED, notifyEnabled);
 
             if (log.isDebugEnabled())
                 log.debug("Added system properties to node attributes.");
@@ -2266,16 +2277,19 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
         Collection<Object> objs = new ArrayList<>();
 
         if (!F.isEmpty(cfg.getLifecycleBeans()))
-            F.copy(objs, cfg.getLifecycleBeans());
+            Collections.addAll(objs, cfg.getLifecycleBeans());
 
         if (!F.isEmpty(cfg.getSegmentationResolvers()))
-            F.copy(objs, cfg.getSegmentationResolvers());
+            Collections.addAll(objs, cfg.getSegmentationResolvers());
 
-        if (cfg.getConnectorConfiguration() != null)
-            F.copy(objs, cfg.getConnectorConfiguration().getMessageInterceptor(),
-                cfg.getConnectorConfiguration().getSslContextFactory());
+        if (cfg.getConnectorConfiguration() != null) {
+            objs.add(cfg.getConnectorConfiguration().getMessageInterceptor());
+            objs.add(cfg.getConnectorConfiguration().getSslContextFactory());
+        }
 
-        F.copy(objs, cfg.getMarshaller(), cfg.getGridLogger(), cfg.getMBeanServer());
+        objs.add(cfg.getMarshaller());
+        objs.add(cfg.getGridLogger());
+        objs.add(cfg.getMBeanServer());
 
         return objs;
     }
