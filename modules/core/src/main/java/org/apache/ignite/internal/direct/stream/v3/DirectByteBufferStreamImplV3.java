@@ -15,10 +15,11 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.internal.direct.stream.v2;
+package org.apache.ignite.internal.direct.stream.v3;
 
 import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collection;
@@ -29,8 +30,6 @@ import java.util.RandomAccess;
 import java.util.UUID;
 import org.apache.ignite.internal.direct.stream.DirectByteBufferStream;
 import org.apache.ignite.internal.util.GridUnsafe;
-import org.apache.ignite.internal.util.tostring.GridToStringExclude;
-import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.lang.IgniteUuid;
 import org.apache.ignite.plugin.extensions.communication.Message;
@@ -41,9 +40,12 @@ import org.apache.ignite.plugin.extensions.communication.MessageWriter;
 import sun.nio.ch.DirectBuffer;
 
 /**
- * Direct marshalling I/O stream (version 2).
+ * Direct marshalling I/O stream (version 3).
  */
-public class DirectByteBufferStreamImplV2 implements DirectByteBufferStream {
+public class DirectByteBufferStreamImplV3 implements DirectByteBufferStream {
+    /** Whether little endian is set. */
+    private static final boolean BIG_ENDIAN = ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN;
+
     /** */
     private static final byte[] BYTE_ARR_EMPTY = new byte[0];
 
@@ -192,7 +194,6 @@ public class DirectByteBufferStreamImplV2 implements DirectByteBufferStream {
     private static final Object NULL = new Object();
 
     /** */
-    @GridToStringExclude
     private final MessageFactory msgFactory;
 
     /** */
@@ -282,7 +283,7 @@ public class DirectByteBufferStreamImplV2 implements DirectByteBufferStream {
     /**
      * @param msgFactory Message factory.
      */
-    public DirectByteBufferStreamImplV2(MessageFactory msgFactory) {
+    public DirectByteBufferStreamImplV3(MessageFactory msgFactory) {
         this.msgFactory = msgFactory;
     }
 
@@ -327,6 +328,9 @@ public class DirectByteBufferStreamImplV2 implements DirectByteBufferStream {
 
         if (lastFinished) {
             int pos = buf.position();
+
+            if (BIG_ENDIAN)
+                val = Short.reverseBytes(val);
 
             GridUnsafe.putShortAligned(heapArr, baseOff + pos, val);
 
@@ -393,7 +397,12 @@ public class DirectByteBufferStreamImplV2 implements DirectByteBufferStream {
         if (lastFinished) {
             int pos = buf.position();
 
-            GridUnsafe.putFloatAligned(heapArr, baseOff + pos, val);
+            int v = Float.floatToIntBits(val);
+
+            if (BIG_ENDIAN)
+                v = Integer.reverseBytes(v);
+
+            GridUnsafe.putIntAligned(heapArr, baseOff + pos, v);
 
             buf.position(pos + 4);
         }
@@ -406,7 +415,12 @@ public class DirectByteBufferStreamImplV2 implements DirectByteBufferStream {
         if (lastFinished) {
             int pos = buf.position();
 
-            GridUnsafe.putDoubleAligned(heapArr, baseOff + pos, val);
+            long v = Double.doubleToLongBits(val);
+
+            if (BIG_ENDIAN)
+                v = Long.reverseBytes(v);
+
+            GridUnsafe.putLongAligned(heapArr, baseOff + pos, v);
 
             buf.position(pos + 8);
         }
@@ -418,6 +432,9 @@ public class DirectByteBufferStreamImplV2 implements DirectByteBufferStream {
 
         if (lastFinished) {
             int pos = buf.position();
+
+            if (BIG_ENDIAN)
+                val = Character.reverseBytes(val);
 
             GridUnsafe.putCharAligned(heapArr, baseOff + pos, val);
 
@@ -592,8 +609,6 @@ public class DirectByteBufferStreamImplV2 implements DirectByteBufferStream {
             if (buf.hasRemaining()) {
                 try {
                     writer.beforeInnerMessageWrite();
-
-                    writer.setCurrentWriteClass(msg.getClass());
 
                     lastFinished = msg.writeTo(buf, writer);
                 }
@@ -780,7 +795,12 @@ public class DirectByteBufferStreamImplV2 implements DirectByteBufferStream {
 
             buf.position(pos + 2);
 
-            return GridUnsafe.getShortAligned(heapArr, baseOff + pos);
+            short val = GridUnsafe.getShortAligned(heapArr, baseOff + pos);
+
+            if (BIG_ENDIAN)
+                val = Short.reverseBytes(val);
+
+            return val;
         }
         else
             return 0;
@@ -869,7 +889,12 @@ public class DirectByteBufferStreamImplV2 implements DirectByteBufferStream {
 
             buf.position(pos + 4);
 
-            return GridUnsafe.getFloatAligned(heapArr, baseOff + pos);
+            int val = GridUnsafe.getIntAligned(heapArr, baseOff + pos);
+
+            if (BIG_ENDIAN)
+                val = Integer.reverseBytes(val);
+
+            return Float.intBitsToFloat(val);
         }
         else
             return 0;
@@ -884,7 +909,12 @@ public class DirectByteBufferStreamImplV2 implements DirectByteBufferStream {
 
             buf.position(pos + 8);
 
-            return GridUnsafe.getDoubleAligned(heapArr, baseOff + pos);
+            long val = GridUnsafe.getLongAligned(heapArr, baseOff + pos);
+
+            if (BIG_ENDIAN)
+                val = Long.reverseBytes(val);
+
+            return Double.longBitsToDouble(val);
         }
         else
             return 0;
@@ -899,7 +929,12 @@ public class DirectByteBufferStreamImplV2 implements DirectByteBufferStream {
 
             buf.position(pos + 2);
 
-            return GridUnsafe.getCharAligned(heapArr, baseOff + pos);
+            char val = GridUnsafe.getCharAligned(heapArr, baseOff + pos);
+
+            if (BIG_ENDIAN)
+                val = Character.reverseBytes(val);
+
+            return val;
         }
         else
             return 0;
@@ -1545,11 +1580,6 @@ public class DirectByteBufferStreamImplV2 implements DirectByteBufferStream {
             default:
                 throw new IllegalArgumentException("Unknown type: " + type);
         }
-    }
-
-    /** {@inheritDoc} */
-    public String toString() {
-        return S.toString(DirectByteBufferStreamImplV2.class, this);
     }
 
     /**
