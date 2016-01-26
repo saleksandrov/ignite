@@ -651,9 +651,19 @@ public final class GridNearGetFuture<K, V> extends CacheDistributedGetFutureAdap
     @SuppressWarnings("unchecked")
     private void addResult(KeyCacheObject key, CacheObject v, GridCacheVersion ver) {
         if (needVer) {
-            V val0 = (V)new T2<>(skipVals ? true : v, ver);
+            if (keepCacheObjects) {
+                V val0 = (V)new T2<>(skipVals ? true : v, ver);
 
-            add(new GridFinishedFuture<>(Collections.singletonMap((K)key, val0)));
+                add(new GridFinishedFuture<>(Collections.singletonMap((K)key, val0)));
+            }
+            else {
+                K key0 = (K)cctx.unwrapBinaryIfNeeded(key, !deserializeBinary, false);
+                V val0 = (V)new T2<>(!skipVals ?
+                    (V)cctx.unwrapBinaryIfNeeded(v, !deserializeBinary, false) :
+                    (V)Boolean.TRUE, ver);
+
+                add(new GridFinishedFuture<>(Collections.singletonMap(key0, val0)));
+            }
         }
         else {
             if (keepCacheObjects) {
@@ -741,16 +751,14 @@ public final class GridNearGetFuture<K, V> extends CacheDistributedGetFutureAdap
 
                     assert skipVals == (info.value() == null);
 
-                    if (needVer)
-                        versionedResult(map, key, val, info.version());
-                    else
-                        cctx.addResult(map,
-                            key,
-                            val,
-                            skipVals,
-                            keepCacheObjects,
-                            deserializeBinary,
-                            false);
+                    cctx.addResult(map,
+                        key,
+                        val,
+                        skipVals,
+                        keepCacheObjects,
+                        deserializeBinary,
+                        false,
+                        needVer ? ver : null);
                 }
                 catch (GridCacheEntryRemovedException ignore) {
                     if (log.isDebugEnabled())

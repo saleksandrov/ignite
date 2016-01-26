@@ -1342,7 +1342,7 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter implements Ig
 
     /**
      * Checks if there is a cached or swapped value for
-     * {@link #getAllAsync(GridCacheContext, Collection, boolean, boolean, boolean, boolean)} method.
+     * {@link #getAllAsync(GridCacheContext, Collection, boolean, boolean, boolean, boolean, boolean)} method.
      *
      * @param cacheCtx Cache context.
      * @param keys Key to enlist.
@@ -1368,7 +1368,8 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter implements Ig
         boolean deserializeBinary,
         boolean skipVals,
         boolean keepCacheObjects,
-        boolean skipStore
+        boolean skipStore,
+        final boolean needVer
     ) throws IgniteCheckedException {
         assert !F.isEmpty(keys);
         assert keysCnt == keys.size();
@@ -1381,7 +1382,7 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter implements Ig
 
         AffinityTopologyVersion topVer = topologyVersion();
 
-        boolean needReadVer = serializable() && optimistic();
+        boolean needReadVer = (serializable() && optimistic()) || needVer;
 
         // In this loop we cover only read-committed or optimistic transactions.
         // Transactions that are pessimistic and not read-committed are covered
@@ -1403,31 +1404,67 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter implements Ig
                     if (!F.isEmpty(txEntry.entryProcessors()))
                         val = txEntry.applyEntryProcessors(val);
 
-                    if (val != null)
-                        cacheCtx.addResult(map, key, val, skipVals, keepCacheObjects, deserializeBinary, false);
+                    if (val != null) {
+                        GridCacheVersion ver = null;
+
+                        if (needVer) {
+                            try {
+                                ver = txEntry.cached().version();
+                            }
+                            catch (GridCacheEntryRemovedException ignored) {
+                                if (log.isDebugEnabled())
+                                    log.debug("Got removed entry in transaction getAllAsync(..)" + key);
+                            }
+                        }
+
+                        cacheCtx.addResult(map, key, val, skipVals, keepCacheObjects, deserializeBinary, false, ver);
+                    }
                 }
                 else {
                     assert txEntry.op() == TRANSFORM;
 
                     while (true) {
                         try {
+                            GridCacheVersion readVer = null;
+
                             Object transformClo =
-                                (txEntry.op() == TRANSFORM  && cctx.gridEvents().isRecordable(EVT_CACHE_OBJECT_READ)) ?
+                                (txEntry.op() == TRANSFORM &&
+                                    cctx.gridEvents().isRecordable(EVT_CACHE_OBJECT_READ)) ?
                                     F.first(txEntry.entryProcessors()) : null;
 
-                            val = txEntry.cached().innerGet(this,
-                                /*swap*/true,
-                                /*read-through*/false,
-                                /*fail fast*/true,
-                                /*unmarshal*/true,
-                                /*metrics*/true,
-                                /*event*/!skipVals,
-                                /*temporary*/false,
-                                CU.subjectId(this, cctx),
-                                transformClo,
-                                resolveTaskName(),
-                                null,
-                                txEntry.keepBinary());
+                            if (needVer) {
+                                T2<CacheObject, GridCacheVersion> res = txEntry.cached().innerGetVersioned(
+                                    this,
+                                    /*swap*/true,
+                                    /*unmarshal*/true,
+                                    /*update-metrics*/true,
+                                    /*event*/!skipVals,
+                                    CU.subjectId(this, cctx),
+                                    transformClo,
+                                    resolveTaskName(),
+                                    null,
+                                    txEntry.keepBinary());
+
+                                if (res != null) {
+                                    val = res.get1();
+                                    readVer = res.get2();
+                                }
+                            }
+                            else {
+                                val = txEntry.cached().innerGet(this,
+                                    /*swap*/true,
+                                    /*read-through*/false,
+                                    /*fail fast*/true,
+                                    /*unmarshal*/true,
+                                    /*metrics*/true,
+                                    /*event*/!skipVals,
+                                    /*temporary*/false,
+                                    CU.subjectId(this, cctx),
+                                    transformClo,
+                                    resolveTaskName(),
+                                    null,
+                                    txEntry.keepBinary());
+                            }
 
                             if (val != null) {
                                 if (!readCommitted() && !skipVals)
@@ -1442,7 +1479,8 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter implements Ig
                                     skipVals,
                                     keepCacheObjects,
                                     deserializeBinary,
-                                    false);
+                                    false,
+                                    readVer);
                             }
                             else
                                 missed.put(key, txEntry.cached().version());
@@ -1600,7 +1638,7 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter implements Ig
 
     /**
      * Loads all missed keys for
-     * {@link #getAllAsync(GridCacheContext, Collection, boolean, boolean, boolean, boolean)} method.
+     * {@link #getAllAsync(GridCacheContext, Collection, boolean, boolean, boolean, boolean, boolean)} method.
      *
      * @param cacheCtx Cache context.
      * @param map Return map.
@@ -1721,7 +1759,8 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter implements Ig
         final boolean deserializeBinary,
         final boolean skipVals,
         final boolean keepCacheObjects,
-        final boolean skipStore) {
+        final boolean skipStore,
+        final boolean needVer) {
         if (F.isEmpty(keys))
             return new GridFinishedFuture<>(Collections.<K, V>emptyMap());
 
@@ -1751,7 +1790,8 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter implements Ig
                 deserializeBinary,
                 skipVals,
                 keepCacheObjects,
-                skipStore);
+                skipStore,
+                needVer);
 
             if (single && missed.isEmpty())
                 return new GridFinishedFuture<>(retMap);
@@ -1797,25 +1837,48 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter implements Ig
                             while (true) {
                                 GridCacheEntryEx cached = txEntry.cached();
 
+                                CacheObject val = null;
+                                GridCacheVersion readVer = null;
+
                                 try {
                                     Object transformClo =
                                         (!F.isEmpty(txEntry.entryProcessors()) &&
                                             cctx.gridEvents().isRecordable(EVT_CACHE_OBJECT_READ)) ?
                                             F.first(txEntry.entryProcessors()) : null;
 
-                                    CacheObject val = cached.innerGet(IgniteTxLocalAdapter.this,
-                                        cacheCtx.isSwapOrOffheapEnabled(),
-                                        /*read-through*/false,
-                                        /*fail-fast*/true,
-                                        /*unmarshal*/true,
-                                        /*metrics*/true,
-                                        /*events*/!skipVals,
-                                        /*temporary*/true,
-                                        CU.subjectId(IgniteTxLocalAdapter.this, cctx),
-                                        transformClo,
-                                        resolveTaskName(),
-                                        null,
-                                        txEntry.keepBinary());
+                                    if (needVer) {
+                                        T2<CacheObject, GridCacheVersion> res = cached.innerGetVersioned(
+                                            IgniteTxLocalAdapter.this,
+                                            /*swap*/cacheCtx.isSwapOrOffheapEnabled(),
+                                            /*unmarshal*/true,
+                                            /**update-metrics*/true,
+                                            /*event*/!skipVals,
+                                            CU.subjectId(IgniteTxLocalAdapter.this, cctx),
+                                            transformClo,
+                                            resolveTaskName(),
+                                            null,
+                                            txEntry.keepBinary());
+
+                                        if (res != null) {
+                                            val = res.get1();
+                                            readVer = res.get2();
+                                        }
+                                    }
+                                    else{
+                                        val = cached.innerGet(IgniteTxLocalAdapter.this,
+                                            cacheCtx.isSwapOrOffheapEnabled(),
+                                            /*read-through*/false,
+                                            /*fail-fast*/true,
+                                            /*unmarshal*/true,
+                                            /*metrics*/true,
+                                            /*events*/!skipVals,
+                                            /*temporary*/true,
+                                            CU.subjectId(IgniteTxLocalAdapter.this, cctx),
+                                            transformClo,
+                                            resolveTaskName(),
+                                            null,
+                                            txEntry.keepBinary());
+                                    }
 
                                     // If value is in cache and passed the filter.
                                     if (val != null) {
@@ -1832,7 +1895,8 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter implements Ig
                                             skipVals,
                                             keepCacheObjects,
                                             deserializeBinary,
-                                            false);
+                                            false,
+                                            readVer);
                                     }
 
                                     // Even though we bring the value back from lock acquisition,

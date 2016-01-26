@@ -19,6 +19,7 @@ package org.apache.ignite.testsuites;
 
 import junit.framework.TestSuite;
 import org.apache.ignite.cache.store.jdbc.CacheJdbcStoreSessionListenerSelfTest;
+import org.apache.ignite.internal.processors.cache.CacheGetEntrySeltTest;
 import org.apache.ignite.internal.processors.cache.IgniteCacheGetCustomCollectionsSelfTest;
 import org.apache.ignite.internal.processors.GridCacheTxLoadFromStoreOnLockSelfTest;
 import org.apache.ignite.internal.processors.cache.CacheClientStoreSelfTest;
@@ -241,6 +242,7 @@ public class IgniteCacheTestSuite4 extends TestSuite {
         suite.addTestSuite(IgniteSystemCacheOnClientTest.class);
 
         suite.addTestSuite(CacheRemoveAllSelfTest.class);
+        suite.addTestSuite(CacheGetEntrySeltTest.class);
 
         suite.addTestSuite(CacheStopAndDestroySelfTest.class);
 

@@ -628,7 +628,13 @@ public class GridPartitionedSingleGetFuture extends GridFutureAdapter<Object> im
                 if (needVer) {
                     assert ver != null;
 
-                    onDone(new T2<>(val, ver));
+                    if (!keepCacheObjects) {
+                        Object res = cctx.unwrapBinaryIfNeeded(val, !deserializeBinary && !skipVals);
+
+                        onDone(new T2<>(res, ver));
+                    }
+                    else
+                        onDone(new T2<>(val, ver));
                 }
                 else {
                     if (!keepCacheObjects) {
