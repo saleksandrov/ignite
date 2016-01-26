@@ -491,8 +491,15 @@ public class GridPartitionedGetFuture<K, V> extends CacheDistributedGetFutureAda
                     }
                     else {
                         if (needVer)
-                            versionedResult(locVals, key, v, ver);
-                        else {
+                            cctx.addResult(locVals,
+                                key,
+                                v,
+                                skipVals,
+                                keepCacheObjects,
+                                deserializeBinary,
+                                true,
+                                ver);
+                        else
                             cctx.addResult(locVals,
                                 key,
                                 v,
@@ -500,7 +507,6 @@ public class GridPartitionedGetFuture<K, V> extends CacheDistributedGetFutureAda
                                 keepCacheObjects,
                                 deserializeBinary,
                                 true);
-                        }
 
                         return true;
                     }
@@ -553,7 +559,14 @@ public class GridPartitionedGetFuture<K, V> extends CacheDistributedGetFutureAda
                 assert skipVals == (info.value() == null);
 
                 if (needVer)
-                    versionedResult(map, info.key(), info.value(), info.version());
+                    cctx.addResult(map,
+                        info.key(),
+                        info.value(),
+                        skipVals,
+                        keepCacheObjects,
+                        deserializeBinary,
+                        false,
+                        info.version());
                 else {
                     cctx.addResult(map,
                         info.key(),

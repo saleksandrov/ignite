@@ -35,6 +35,7 @@ import javax.cache.integration.CacheWriter;
 import javax.cache.processor.EntryProcessor;
 import javax.cache.processor.EntryProcessorException;
 import javax.cache.processor.EntryProcessorResult;
+import org.apache.ignite.cache.CacheEntry;
 import org.apache.ignite.cache.CacheEntryProcessor;
 import org.apache.ignite.cache.CacheMetrics;
 import org.apache.ignite.cache.CacheMode;
@@ -397,9 +398,17 @@ public interface IgniteCache<K, V> extends javax.cache.Cache<K, V>, IgniteAsyncS
     @IgniteAsyncSupported
     @Override public V get(K key);
 
+    /** TODO */
+    @IgniteAsyncSupported
+    public CacheEntry<K, V> getEntry(K key);
+
     /** {@inheritDoc} */
     @IgniteAsyncSupported
     @Override public Map<K, V> getAll(Set<? extends K> keys);
+
+    /** TODO */
+    @IgniteAsyncSupported
+    public Collection<CacheEntry<K, V>>  getEntries(Set<? extends K> keys);
 
     /**
      * Gets values from cache. Will bypass started transaction, if any, i.e. will not enlist entries

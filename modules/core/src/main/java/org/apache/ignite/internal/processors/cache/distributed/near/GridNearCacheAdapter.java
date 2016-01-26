@@ -241,7 +241,8 @@ public abstract class GridNearCacheAdapter<K, V> extends GridDistributedCacheAda
         @Nullable ExpiryPolicy expiryPlc,
         boolean skipVal,
         boolean skipStore,
-        boolean canRemap
+        boolean canRemap,
+        boolean needVer
     ) {
         if (F.isEmpty(keys))
             return new GridFinishedFuture<>(Collections.<K, V>emptyMap());
@@ -261,7 +262,7 @@ public abstract class GridNearCacheAdapter<K, V> extends GridDistributedCacheAda
             expiry,
             skipVal,
             canRemap,
-            false,
+            needVer,
             false);
 
         // init() will register future for responses if future has remote mappings.

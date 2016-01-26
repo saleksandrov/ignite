@@ -627,7 +627,8 @@ public abstract class GridDhtCacheAdapter<K, V> extends GridDistributedCacheAdap
         String taskName,
         boolean deserializeBinary,
         boolean skipVals,
-        boolean canRemap
+        boolean canRemap,
+        boolean needVer
     ) {
         CacheOperationContext opCtx = ctx.operationContextPerCall();
 
@@ -640,7 +641,8 @@ public abstract class GridDhtCacheAdapter<K, V> extends GridDistributedCacheAdap
             forcePrimary,
             null,
             skipVals,
-            canRemap);
+            canRemap,
+            needVer);
     }
 
     /**

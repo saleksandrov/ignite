@@ -18,6 +18,7 @@
 package org.apache.ignite.internal.processors.cache;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -29,6 +30,7 @@ import javax.cache.processor.EntryProcessor;
 import javax.cache.processor.MutableEntry;
 import org.apache.ignite.IgniteCache;
 import org.apache.ignite.cache.CacheAtomicWriteOrderMode;
+import org.apache.ignite.cache.CacheEntry;
 import org.apache.ignite.cache.CacheInterceptor;
 import org.apache.ignite.cache.CacheMode;
 import org.apache.ignite.cache.affinity.Affinity;
@@ -257,6 +259,112 @@ public abstract class GridCacheInterceptorAbstractSelfTest extends GridCacheAbst
     /**
      * @throws Exception If failed.
      */
+    public void testGetEntry() throws Exception {
+        testGetEntry(primaryKey(0));
+
+        afterTest();
+
+        if (cacheMode() != LOCAL)
+            testGetEntry(backupKey(0));
+    }
+
+    /**
+     * @param key Key.
+     * @throws Exception If failed.
+     */
+    private void testGetEntry(String key) throws Exception {
+        // Try when value is not in cache.
+
+        interceptor.retInterceptor = new NullGetInterceptor();
+
+        log.info("Get 1.");
+
+        IgniteCache<String, Integer> cache = jcache(0);
+
+        assertEquals(null, cache.getEntry(key).getValue());
+
+        assertEquals(1, interceptor.invokeCnt.get());
+
+        assertEquals(0, interceptor.getMap.size());
+
+        interceptor.reset();
+
+        interceptor.retInterceptor = new OneGetInterceptor();
+
+        log.info("Get 2.");
+
+        assertEquals((Integer)1, cache.getEntry(key).getValue());
+
+        assertEquals(1, interceptor.invokeCnt.get());
+
+        assertEquals(0, interceptor.getMap.size());
+
+        interceptor.reset();
+
+        // Disable interceptor and update cache.
+
+        interceptor.disabled = true;
+
+        cache.put(key, 100);
+
+        interceptor.disabled = false;
+
+        // Try when value is in cache.
+
+        interceptor.retInterceptor = new NullGetInterceptor();
+
+        log.info("Get 3.");
+
+        assertEquals(null, cache.getEntry(key).getValue());
+
+        assertEquals(1, interceptor.invokeCnt.get());
+
+        assertEquals(1, interceptor.getMap.size());
+
+        assertEquals(100, interceptor.getMap.get(key));
+
+        checkCacheValue(key, 100);
+
+        interceptor.reset();
+
+        interceptor.retInterceptor = new GetIncrementInterceptor();
+
+        log.info("Get 4.");
+
+        assertEquals((Integer)101, cache.getEntry(key).getValue());
+
+        assertEquals(1, interceptor.invokeCnt.get());
+
+        assertEquals(1, interceptor.getMap.size());
+
+        assertEquals(100, interceptor.getMap.get(key));
+
+        checkCacheValue(key, 100);
+
+        interceptor.reset();
+
+        interceptor.retInterceptor = new GetIncrementInterceptor();
+
+        log.info("GetAsync 1.");
+
+        IgniteCache<String, Integer> cacheAsync = cache.withAsync();
+
+        cacheAsync.getEntry(key);
+
+        assertEquals((Integer)101, cacheAsync.<CacheEntry<String, Integer>>future().get().getValue());
+
+        assertEquals(1, interceptor.invokeCnt.get());
+
+        assertEquals(1, interceptor.getMap.size());
+
+        assertEquals(100, interceptor.getMap.get(key));
+
+        checkCacheValue(key, 100);
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
     public void testGetAll() throws Exception {
         Set<String> keys = new LinkedHashSet<>();
 
@@ -341,6 +449,90 @@ public abstract class GridCacheInterceptorAbstractSelfTest extends GridCacheAbst
                 }
 
                 i++;
+            }
+
+            assertEquals(1000, interceptor.invokeCnt.get());
+        }
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testGetEntries() throws Exception {
+        Set<String> keys = new LinkedHashSet<>();
+
+        for (int i = 0; i < 1000; i++)
+            keys.add(String.valueOf(i));
+
+        interceptor.retInterceptor = new NullGetInterceptor();
+
+        IgniteCache<String, Integer> cache = jcache(0);
+
+        IgniteCache<String, Integer> cacheAsync = cache.withAsync();
+
+        Collection<CacheEntry<String, Integer>> c = cache.getEntries(keys);
+
+        assertEquals(0, c.size());
+
+        assertEquals(1000, interceptor.invokeCnt.get());
+
+        interceptor.reset();
+
+        interceptor.retInterceptor = new GetAllInterceptor1();
+
+        c = cache.getEntries(keys);
+
+        assertEquals(500, c.size());
+
+        for (CacheEntry<String, Integer> e : c) {
+            int k = Integer.valueOf(e.getKey());
+
+            assertEquals((Integer)(k * 2), e.getValue());
+        }
+
+        assertEquals(1000, interceptor.invokeCnt.get());
+
+        // Put some values in cache.
+
+        interceptor.disabled = true;
+
+        for (int i = 0; i < 500; i++)
+            cache.put(String.valueOf(i), i);
+
+        interceptor.disabled = false;
+
+        for (int j = 0; j < 2; j++) {
+            interceptor.reset();
+
+            interceptor.retInterceptor = new GetAllInterceptor2();
+
+            if (j == 0)
+                c = cache.getEntries(keys);
+            else {
+                cacheAsync.getEntries(keys);
+
+                c = cacheAsync.<Collection<CacheEntry<String, Integer>>>future().get();
+            }
+
+            for (CacheEntry<String, Integer> e : c) {
+                int k = Integer.valueOf(e.getKey());
+
+                switch (k % 3) {
+                    case 1:
+                        Integer exp = k < 500 ? k : null;
+
+                        assertEquals(exp, e.getValue());
+
+                        break;
+
+                    case 2:
+                        assertEquals((Integer)(k * 3), e.getValue());
+
+                        break;
+
+                    default:
+                        fail();
+                }
             }
 
             assertEquals(1000, interceptor.invokeCnt.get());

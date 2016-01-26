@@ -200,7 +200,8 @@ public class GridDhtColocatedCache<K, V> extends GridDhtTransactionalCacheAdapte
         String taskName,
         final boolean deserializeBinary,
         final boolean skipVals,
-        boolean canRemap) {
+        boolean canRemap,
+        boolean needVer) {
         ctx.checkSecurity(SecurityPermission.CACHE_READ);
 
         if (keyCheck)
@@ -258,7 +259,7 @@ public class GridDhtColocatedCache<K, V> extends GridDhtTransactionalCacheAdapte
             skipVals ? null : expiryPolicy(opCtx != null ? opCtx.expiry() : null),
             skipVals,
             canRemap,
-            /*needVer*/false,
+            /*needVer*/needVer,
             /*keepCacheObjects*/false);
 
         fut.init();
@@ -275,7 +276,8 @@ public class GridDhtColocatedCache<K, V> extends GridDhtTransactionalCacheAdapte
         String taskName,
         final boolean deserializeBinary,
         final boolean skipVals,
-        boolean canRemap
+        boolean canRemap,
+        boolean needVer
     ) {
         ctx.checkSecurity(SecurityPermission.CACHE_READ);
 
@@ -318,7 +320,8 @@ public class GridDhtColocatedCache<K, V> extends GridDhtTransactionalCacheAdapte
             deserializeBinary,
             skipVals ? null : expiryPolicy(opCtx != null ? opCtx.expiry() : null),
             skipVals,
-            canRemap);
+            canRemap,
+            needVer);
     }
 
     /** {@inheritDoc} */
@@ -357,7 +360,8 @@ public class GridDhtColocatedCache<K, V> extends GridDhtTransactionalCacheAdapte
         boolean deserializeBinary,
         @Nullable IgniteCacheExpiryPolicy expiryPlc,
         boolean skipVals,
-        boolean canRemap) {
+        boolean canRemap,
+        boolean needVer) {
         return loadAsync(keys,
             readThrough,
             forcePrimary,
@@ -367,7 +371,7 @@ public class GridDhtColocatedCache<K, V> extends GridDhtTransactionalCacheAdapte
             expiryPlc,
             skipVals,
             canRemap,
-            false,
+            needVer,
             false);
     }
 
@@ -523,7 +527,14 @@ public class GridDhtColocatedCache<K, V> extends GridDhtTransactionalCacheAdapte
                                     locVals = U.newHashMap(keys.size());
 
                                 if (needVer)
-                                    locVals.put((K)key, (V)new T2<>((Object)(skipVals ? true : v), ver));
+                                    ctx.addResult(locVals,
+                                        key,
+                                        v,
+                                        skipVals,
+                                        keepCacheObj,
+                                        deserializeBinary,
+                                        true,
+                                        ver);
                                 else {
                                     ctx.addResult(locVals,
                                         key,
