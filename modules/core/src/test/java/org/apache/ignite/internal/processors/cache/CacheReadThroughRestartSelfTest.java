@@ -167,16 +167,24 @@ public class CacheReadThroughRestartSelfTest extends GridCacheAbstractSelfTest {
         for (TransactionConcurrency txConcurrency : TransactionConcurrency.values()) {
             for (TransactionIsolation txIsolation : TransactionIsolation.values()) {
                 try (Transaction tx = ignite.transactions().txStart(txConcurrency, txIsolation, 100000, 1000)) {
-                    for (int k = 0; k < 100; k++) {
-                        Set<String> keys = new HashSet<>();
+                    try {
+                        for (int k = 0; k < 100; k++) {
+                            Set<String> keys = new HashSet<>();
 
-                        for (int j = k; j < k + 10; j++)
-                            keys.add("key" + j);
+                            for (int j = k; j < k + 10; j++)
+                                keys.add("key" + j);
 
-                        assertNotNull("Null value for keys: " + k + " - " + k + 9, cache.getEntries(keys));
+                            assertNotNull("Null value for keys: " + k + " - " + k + 9, cache.getEntries(keys));
+                        }
+
+                        tx.commit();
                     }
+                    catch (Exception e) {
+                        assert txIsolation == TransactionIsolation.REPEATABLE_READ ||
+                            (txIsolation == TransactionIsolation.SERIALIZABLE &&
+                                tx.concurrency() == TransactionConcurrency.PESSIMISTIC);
 
-                    tx.commit();
+                    }
                 }
             }
         }

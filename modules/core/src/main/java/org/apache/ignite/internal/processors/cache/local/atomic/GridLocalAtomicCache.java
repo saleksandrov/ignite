@@ -589,9 +589,8 @@ public class GridLocalAtomicCache<K, V> extends GridCacheAdapter<K, V> {
                     entry = swapOrOffheap ? entryEx(cacheKey) : peekEx(cacheKey);
 
                     if (entry != null) {
-
-                        CacheObject v = null;
-                        GridCacheVersion ver = null;
+                        CacheObject v ;
+                        GridCacheVersion ver;
 
                         if (needVer) {
                             T2<CacheObject, GridCacheVersion> res = entry.innerGetVersioned(

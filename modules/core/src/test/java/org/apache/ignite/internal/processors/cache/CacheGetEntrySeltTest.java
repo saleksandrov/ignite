@@ -21,6 +21,7 @@ import java.io.Serializable;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
+import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
 import org.apache.ignite.binary.BinaryObject;
 import org.apache.ignite.cache.CacheEntry;
@@ -28,7 +29,13 @@ import org.apache.ignite.cache.CacheMode;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.configuration.NearCacheConfiguration;
+import org.apache.ignite.internal.IgniteKernal;
+import org.apache.ignite.internal.processors.cache.distributed.near.GridNearCacheAdapter;
+import org.apache.ignite.internal.processors.cacheobject.IgniteCacheObjectProcessor;
 import org.apache.ignite.internal.util.typedef.internal.S;
+import org.apache.ignite.transactions.Transaction;
+import org.apache.ignite.transactions.TransactionConcurrency;
+import org.apache.ignite.transactions.TransactionIsolation;
 
 import static org.apache.ignite.cache.CacheAtomicityMode.TRANSACTIONAL;
 
@@ -45,132 +52,249 @@ public class CacheGetEntrySeltTest extends GridCacheAbstractSelfTest {
     @Override protected IgniteConfiguration getConfiguration(String gridName) throws Exception {
         IgniteConfiguration cfg = super.getConfiguration(gridName);
 
-        CacheConfiguration cacheCfg1 = new CacheConfiguration();
-        cacheCfg1.setCacheMode(CacheMode.PARTITIONED);
-        cacheCfg1.setName("near");
-        cacheCfg1.setNearConfiguration(new NearCacheConfiguration());
-
-        CacheConfiguration cacheCfg1t = new CacheConfiguration();
-        cacheCfg1t.setCacheMode(CacheMode.PARTITIONED);
-        cacheCfg1t.setAtomicityMode(TRANSACTIONAL);
-        cacheCfg1t.setName("nearT");
-        cacheCfg1t.setNearConfiguration(new NearCacheConfiguration());
-
-        CacheConfiguration cacheCfg2 = new CacheConfiguration();
-        cacheCfg2.setCacheMode(CacheMode.PARTITIONED);
-        cacheCfg2.setName("partitioned");
-
-        CacheConfiguration cacheCfg2t = new CacheConfiguration();
-        cacheCfg2t.setCacheMode(CacheMode.PARTITIONED);
-        cacheCfg2t.setAtomicityMode(TRANSACTIONAL);
-        cacheCfg2t.setName("partitionedT");
-
-        CacheConfiguration cacheCfg3 = new CacheConfiguration();
-        cacheCfg3.setCacheMode(CacheMode.LOCAL);
-        cacheCfg3.setName("local");
-
-        CacheConfiguration cacheCfg3t = new CacheConfiguration();
-        cacheCfg3t.setCacheMode(CacheMode.LOCAL);
-        cacheCfg3t.setAtomicityMode(TRANSACTIONAL);
-        cacheCfg3t.setName("localT");
-
-        CacheConfiguration cacheCfg4 = new CacheConfiguration();
-        cacheCfg4.setCacheMode(CacheMode.REPLICATED);
-        cacheCfg4.setName("replicated");
-
-        CacheConfiguration cacheCfg4t = new CacheConfiguration();
-        cacheCfg4t.setCacheMode(CacheMode.REPLICATED);
-        cacheCfg4t.setAtomicityMode(TRANSACTIONAL);
-        cacheCfg4t.setName("replicatedT");
-
         cfg.setMarshaller(null);
-
-        cfg.setCacheConfiguration(cfg.getCacheConfiguration()[0], cacheCfg1, cacheCfg1t, cacheCfg2, cacheCfg2t,
-            cacheCfg3, cacheCfg3t, cacheCfg4, cacheCfg4t);
 
         return cfg;
     }
 
-    @Override protected long getTestTimeout() {
-        return Long.MAX_VALUE;
+    /** */
+    public void testNear() {
+        CacheConfiguration cfg = new CacheConfiguration();
+
+        cfg.setCacheMode(CacheMode.PARTITIONED);
+        cfg.setName("near");
+        cfg.setNearConfiguration(new NearCacheConfiguration());
+
+        test(cfg);
     }
 
-    /**
-     * @throws Exception If failed.
-     */
-    public void testGetEntry() throws Exception {
-        test0("near");
-        test0("nearT");
-        test0("partitioned");
-        test0("partitionedT");
-        test0("local");
-        test0("localT");
-        test0("replicated");
-        test0("replicatedT");
+    /** */
+    public void testNearTransactional() {
+        CacheConfiguration cfg = new CacheConfiguration();
+
+        cfg.setCacheMode(CacheMode.PARTITIONED);
+        cfg.setAtomicityMode(TRANSACTIONAL);
+        cfg.setName("nearT");
+        cfg.setNearConfiguration(new NearCacheConfiguration());
+
+        testT(cfg);
     }
 
-    private void test0(String name) {
-        IgniteCache<Integer, TestValue> cache = grid(0).cache(name);
+    /** */
+    public void testPartitioned() {
+        CacheConfiguration cfg = new CacheConfiguration();
+        cfg.setCacheMode(CacheMode.PARTITIONED);
+        cfg.setName("partitioned");
 
+        test(cfg);
+    }
+
+    /** */
+    public void testPartitionedTransactional() {
+        CacheConfiguration cfg = new CacheConfiguration();
+
+        cfg.setCacheMode(CacheMode.PARTITIONED);
+        cfg.setAtomicityMode(TRANSACTIONAL);
+        cfg.setName("partitionedT");
+
+        testT(cfg);
+    }
+
+    /** */
+    public void testLocal() {
+        CacheConfiguration cfg = new CacheConfiguration();
+
+        cfg.setCacheMode(CacheMode.LOCAL);
+        cfg.setName("local");
+
+        test(cfg);
+    }
+
+    /** */
+    public void testLocalTransactional() {
+        CacheConfiguration cfg = new CacheConfiguration();
+
+        cfg.setCacheMode(CacheMode.LOCAL);
+        cfg.setAtomicityMode(TRANSACTIONAL);
+        cfg.setName("localT");
+
+        testT(cfg);
+    }
+
+    /** */
+    public void testReplicated() {
+        CacheConfiguration cfg = new CacheConfiguration();
+
+        cfg.setCacheMode(CacheMode.REPLICATED);
+        cfg.setName("replicated");
+
+        test(cfg);
+    }
+
+    /** */
+    public void testReplicatedTransactional() {
+        CacheConfiguration cfg = new CacheConfiguration();
+
+        cfg.setCacheMode(CacheMode.REPLICATED);
+        cfg.setAtomicityMode(TRANSACTIONAL);
+        cfg.setName("replicatedT");
+
+        testT(cfg);
+    }
+
+    /** */
+    private void testT(CacheConfiguration cfg) {
+        Ignite ignite = grid(0);
+
+        try (IgniteCache<Integer, TestValue> cache = ignite.createCache(cfg)) {
+            init(cache);
+
+            for (TransactionConcurrency txConcurrency : TransactionConcurrency.values()) {
+                for (TransactionIsolation txIsolation : TransactionIsolation.values()) {
+                    try (Transaction tx = ignite.transactions().txStart(txConcurrency, txIsolation, 100000, 1000)) {
+                        try {
+                            testGetEntry(cache);
+
+                            tx.commit();
+                        }
+                        catch (Exception e) {
+                            assert txIsolation == TransactionIsolation.REPEATABLE_READ ||
+                                (txIsolation == TransactionIsolation.SERIALIZABLE &&
+                                    tx.concurrency() == TransactionConcurrency.PESSIMISTIC);
+                        }
+                    }
+
+                    try (Transaction tx = ignite.transactions().txStart(txConcurrency, txIsolation, 100000, 1000)) {
+                        try {
+                            testGetEntries(cache);
+
+                            tx.commit();
+                        }
+                        catch (Exception e) {
+                            assert txIsolation == TransactionIsolation.REPEATABLE_READ ||
+                                (txIsolation == TransactionIsolation.SERIALIZABLE &&
+                                    tx.concurrency() == TransactionConcurrency.PESSIMISTIC);
+                        }
+                    }
+                }
+
+            }
+        }
+    }
+
+    /** */
+    private void test(CacheConfiguration cfg) {
+        try (IgniteCache<Integer, TestValue> cache = grid(0).createCache(cfg)) {
+            init(cache);
+
+            testGetEntry(cache);
+
+            testGetEntries(cache);
+        }
+    }
+
+    /** */
+    private void init(IgniteCache<Integer, TestValue> cache) {
         // Put.
-        for (int i = 0; i < 10_000; ++i)
+        for (int i = 0; i < 100; ++i)
             cache.put(i, new TestValue(i));
+    }
 
+    /** */
+    private void checkVersion(CacheEntry<Integer, ?> e, IgniteCache<Integer, TestValue> cache) {
+        CacheConfiguration cfg = cache.getConfiguration(CacheConfiguration.class);
+
+        if (cfg.getCacheMode() != CacheMode.LOCAL) {
+            Ignite prim = primaryNode(e.getKey(), cache.getName());
+
+            GridCacheAdapter<Object, Object> cacheAdapter = ((IgniteKernal)prim).internalCache(cache.getName());
+
+            if (cfg.getNearConfiguration() != null)
+                cacheAdapter = ((GridNearCacheAdapter)cacheAdapter).dht();
+
+            IgniteCacheObjectProcessor cacheObjects = cacheAdapter.context().cacheObjects();
+
+            CacheObjectContext cacheObjCtx = cacheAdapter.context().cacheObjectContext();
+
+            GridCacheMapEntry me = cacheAdapter.map().getEntry(cacheObjects.toCacheKeyObject(cacheObjCtx, e.getKey(), true));
+
+            try {
+                assert me.version().equals(e.version());
+            }
+            catch (GridCacheEntryRemovedException ex) {
+                throw new RuntimeException(ex);
+            }
+        }
+    }
+
+    /** */
+    private void testGetEntry(IgniteCache<Integer, TestValue> cache) {
         // getEntry regular.
-        for (int i = 0; i < 10_000; ++i) {
+        for (int i = 0; i < 100; ++i) {
             CacheEntry<Integer, TestValue> e = cache.getEntry(i);
+
+            checkVersion(e, cache);
 
             assertEquals(e.getValue().val, i);
 
             assertNotNull(e.version());
         }
 
-        // getEntries regular.
-        for (int i = 0; i < 10_000; ++i) {
-            Set<Integer> set = new HashSet<>();
-
-            for (int j = 0; j < 10; j++)
-                set.add(++i);
-
-            Collection<CacheEntry<Integer, TestValue>> es = cache.getEntries(set);
-
-            for (CacheEntry<Integer, TestValue> e : es) {
-                assertEquals((Integer)e.getValue().val, e.getKey());
-
-                assertTrue(e.getValue().val <= i);
-                assertTrue(e.getValue().val > i - 10);
-
-                assertNotNull(e.version());
-            }
-        }
-
-        IgniteCache<Integer, BinaryObject> cacheB = grid(0).cache(name).withKeepBinary();
+        IgniteCache<Integer, BinaryObject> cacheB = cache.withKeepBinary();
 
         // getEntry withKeepBinary.
-        for (int i = 0; i < 10_000; ++i) {
+        for (int i = 0; i < 100; ++i) {
             CacheEntry<Integer, BinaryObject> e = cacheB.getEntry(i);
+
+            checkVersion(e, cache);
 
             assertEquals(((TestValue)e.getValue().deserialize()).val, i);
 
             assertNotNull(e.version());
         }
+    }
 
-        // getEntries withKeepBinary.
-        for (int i = 0; i < 10_000; ++i) {
+    /** */
+    private void testGetEntries(IgniteCache<Integer, TestValue> cache) {
+        // getEntries regular.
+        for (int i = 0; i < 100; i++) {
             Set<Integer> set = new HashSet<>();
 
             for (int j = 0; j < 10; j++)
-                set.add(++i);
+                set.add(i + j);
+
+            Collection<CacheEntry<Integer, TestValue>> es = cache.getEntries(set);
+
+            for (CacheEntry<Integer, TestValue> e : es) {
+                checkVersion(e, cache);
+
+                assertEquals((Integer)e.getValue().val, e.getKey());
+
+                assertTrue(set.contains(e.getValue().val));
+
+                assertNotNull(e.version());
+            }
+        }
+
+        IgniteCache<Integer, BinaryObject> cacheB = cache.withKeepBinary();
+
+        // getEntries withKeepBinary.
+        for (int i = 0; i < 100; i++) {
+            Set<Integer> set = new HashSet<>();
+
+            for (int j = 0; j < 10; j++)
+                set.add(i + j);
 
             Collection<CacheEntry<Integer, BinaryObject>> es = cacheB.getEntries(set);
 
             for (CacheEntry<Integer, BinaryObject> e : es) {
+                checkVersion(e, cache);
+
                 TestValue tv = e.getValue().deserialize();
 
                 assertEquals((Integer)tv.val, e.getKey());
 
-                assertTrue((tv).val <= i);
-                assertTrue((tv).val > i - 10);
+                assertTrue(set.contains((tv).val));
 
                 assertNotNull(e.version());
             }

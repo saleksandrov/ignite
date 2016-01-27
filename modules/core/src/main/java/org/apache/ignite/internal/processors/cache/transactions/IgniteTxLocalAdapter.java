@@ -1408,12 +1408,17 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter implements Ig
                         GridCacheVersion ver = null;
 
                         if (needVer) {
-                            try {
-                                ver = txEntry.cached().version();
-                            }
-                            catch (GridCacheEntryRemovedException ignored) {
-                                if (log.isDebugEnabled())
-                                    log.debug("Got removed entry in transaction getAllAsync(..)" + key);
+                            if (txEntry.op() != READ)
+                                ver = xidVersion();
+                            else {
+                                if (serializable()) {
+                                    ver = txEntry.serializableReadVersion();
+                                }
+                                else
+                                    throw new IgniteCheckedException(
+                                        "Get versioned entry within transaction failed. " +
+                                            "Transaction should be Optimistic Serializable. " +
+                                            "[level=" + isolation + ", conc=" + concurrency + "]");
                             }
                         }
 

@@ -18,6 +18,7 @@
 package org.apache.ignite.internal.processors.cache;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -46,6 +47,7 @@ import org.apache.ignite.IgniteCache;
 import org.apache.ignite.IgniteDataStreamer;
 import org.apache.ignite.IgniteException;
 import org.apache.ignite.IgniteTransactions;
+import org.apache.ignite.cache.CacheEntry;
 import org.apache.ignite.cache.CacheMode;
 import org.apache.ignite.cache.CacheWriteSynchronizationMode;
 import org.apache.ignite.cache.store.CacheStore;
@@ -621,6 +623,53 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
     /**
      * @throws Exception If failed.
      */
+    public void testTxCommitReadOnlyGetEntries() throws Exception {
+        Ignite ignite0 = ignite(0);
+
+        final IgniteTransactions txs = ignite0.transactions();
+
+        for (CacheConfiguration<Integer, Integer> ccfg : cacheConfigurations()) {
+            logCacheInfo(ccfg);
+
+            try {
+                IgniteCache<Integer, Integer> cache = ignite0.createCache(ccfg);
+
+                Set<Integer> keys = new HashSet<>();
+
+                for (int i = 0; i < 100; i++)
+                    keys.add(i);
+
+                try (Transaction tx = txs.txStart(OPTIMISTIC, SERIALIZABLE)) {
+                    Collection<CacheEntry<Integer, Integer>> c = cache.getEntries(keys);
+
+                    assertTrue(c.isEmpty());
+
+                    tx.commit();
+                }
+
+                for (Integer key : keys)
+                    checkValue(key, null, cache.getName());
+
+                try (Transaction tx = txs.txStart(OPTIMISTIC, SERIALIZABLE)) {
+                    Collection<CacheEntry<Integer, Integer>> c = cache.getEntries(keys);
+
+                    assertTrue(c.isEmpty());
+
+                    tx.rollback();
+                }
+
+                for (Integer key : keys)
+                    checkValue(key, null, cache.getName());
+            }
+            finally {
+                destroyCache(ccfg.getName());
+            }
+        }
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
     public void testTxCommitReadWriteTwoNodes() throws Exception {
         Ignite ignite0 = ignite(0);
 
@@ -661,6 +710,20 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
      */
     public void testTxConflictRead2() throws Exception {
         txConflictRead(false);
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testTxConflictReadEntry1() throws Exception {
+        txConflictReadEntry(true);
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testTxConflictReadEntry2() throws Exception {
+        txConflictReadEntry(false);
     }
 
     /**
@@ -728,6 +791,70 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
     }
 
     /**
+     * @param noVal If {@code true} there is no cache value when read in tx.
+     * @throws Exception If failed.
+     */
+    private void txConflictReadEntry(boolean noVal) throws Exception {
+        Ignite ignite0 = ignite(0);
+
+        final IgniteTransactions txs = ignite0.transactions();
+
+        for (CacheConfiguration<Integer, Integer> ccfg : cacheConfigurations()) {
+            logCacheInfo(ccfg);
+
+            try {
+                IgniteCache<Integer, Integer> cache = ignite0.createCache(ccfg);
+
+                List<Integer> keys = testKeys(cache);
+
+                for (Integer key : keys) {
+                    log.info("Test key: " + key);
+
+                    Integer expVal = null;
+
+                    if (!noVal) {
+                        expVal = -1;
+
+                        cache.put(key, expVal);
+                    }
+
+                    try {
+                        try (Transaction tx = txs.txStart(OPTIMISTIC, SERIALIZABLE)) {
+                            CacheEntry<Integer, Integer> val = cache.getEntry(key);
+
+                            assertEquals(expVal, val == null ? null : val.getValue());
+
+                            updateKey(cache, key, 1);
+
+                            tx.commit();
+                        }
+
+                        fail();
+                    }
+                    catch (TransactionOptimisticException e) {
+                        log.info("Expected exception: " + e);
+                    }
+
+                    checkValue(key, 1, cache.getName());
+
+                    try (Transaction tx = txs.txStart(OPTIMISTIC, SERIALIZABLE)) {
+                        CacheEntry<Integer, Integer> val = cache.getEntry(key);
+
+                        assertEquals((Integer)1, val.getValue());
+
+                        tx.commit();
+                    }
+
+                    checkValue(key, 1, cache.getName());
+                }
+            }
+            finally {
+                destroyCache(ccfg.getName());
+            }
+        }
+    }
+
+    /**
      * @throws Exception If failed.
      */
     public void testTxConflictReadWrite1() throws Exception {
@@ -753,6 +880,34 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
      */
     public void testTxConflictReadRemove2() throws Exception {
         txConflictReadWrite(false, true);
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testTxConflictReadEntryWrite1() throws Exception {
+        txConflictReadEntryWrite(true, false);
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testTxConflictReadEntryWrite2() throws Exception {
+        txConflictReadEntryWrite(false, false);
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testTxConflictReadEntryRemove1() throws Exception {
+        txConflictReadEntryWrite(true, true);
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testTxConflictReadEntryRemove2() throws Exception {
+        txConflictReadEntryWrite(false, true);
     }
 
     /**
@@ -812,6 +967,81 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
                         Integer val = cache.get(key);
 
                         assertEquals(1, (Object) val);
+
+                        if (rmv)
+                            cache.remove(key);
+                        else
+                            cache.put(key, 2);
+
+                        tx.commit();
+                    }
+
+                    checkValue(key, rmv ? null : 2, cache.getName());
+                }
+            }
+            finally {
+                destroyCache(ccfg.getName());
+            }
+        }
+    }
+
+    /**
+     * @param noVal If {@code true} there is no cache value when read in tx.
+     * @param rmv If {@code true} tests remove, otherwise put.
+     * @throws Exception If failed.
+     */
+    private void txConflictReadEntryWrite(boolean noVal, boolean rmv) throws Exception {
+        Ignite ignite0 = ignite(0);
+
+        final IgniteTransactions txs = ignite0.transactions();
+
+        for (CacheConfiguration<Integer, Integer> ccfg : cacheConfigurations()) {
+            logCacheInfo(ccfg);
+
+            try {
+                IgniteCache<Integer, Integer> cache = ignite0.createCache(ccfg);
+
+                List<Integer> keys = testKeys(cache);
+
+                for (Integer key : keys) {
+                    log.info("Test key: " + key);
+
+                    Integer expVal = null;
+
+                    if (!noVal) {
+                        expVal = -1;
+
+                        cache.put(key, expVal);
+                    }
+
+                    try {
+                        try (Transaction tx = txs.txStart(OPTIMISTIC, SERIALIZABLE)) {
+                            CacheEntry<Integer, Integer> val = cache.getEntry(key);
+
+                            assertEquals(expVal, val == null ? null : val.getValue());
+
+                            updateKey(cache, key, 1);
+
+                            if (rmv)
+                                cache.remove(key);
+                            else
+                                cache.put(key, 2);
+
+                            tx.commit();
+                        }
+
+                        fail();
+                    }
+                    catch (TransactionOptimisticException e) {
+                        log.info("Expected exception: " + e);
+                    }
+
+                    checkValue(key, 1, cache.getName());
+
+                    try (Transaction tx = txs.txStart(OPTIMISTIC, SERIALIZABLE)) {
+                        CacheEntry<Integer, Integer> val = cache.getEntry(key);
+
+                        assertEquals(1, (Object) val.getValue());
 
                         if (rmv)
                             cache.remove(key);

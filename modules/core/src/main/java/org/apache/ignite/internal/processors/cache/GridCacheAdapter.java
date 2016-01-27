@@ -1636,12 +1636,9 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
         Map<K, CacheEntry<K, V>> res;
 
         if (F.isEmpty(keys)) {
-            res = U.newHashMap(map.size());
+            assert map.isEmpty();
 
-            for (Map.Entry<K, T2<V, GridCacheVersion>> e : map.entrySet())
-                res.put(e.getKey(), new CacheEntryImplEx<>(e.getKey(), e.getValue().get1(), e.getValue().get2()));
-
-            return res.values();
+            return Collections.emptySet();
         }
 
         res = U.newHashMap(keys.size());
@@ -1900,25 +1897,14 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
                                     ctx.evicts().touch(entry, topVer);
                             }
                             else {
-                                if (needVer) {
-                                    ctx.addResult(map,
-                                        key,
-                                        res.get1(),
-                                        skipVals,
-                                        keepCacheObjects,
-                                        deserializeBinary,
-                                        true,
-                                        res.get2());
-                                }
-                                else {
-                                    ctx.addResult(map,
-                                        key,
-                                        res.get1(),
-                                        skipVals,
-                                        keepCacheObjects,
-                                        deserializeBinary,
-                                        true);
-                                }
+                                ctx.addResult(map,
+                                    key,
+                                    res.get1(),
+                                    skipVals,
+                                    keepCacheObjects,
+                                    deserializeBinary,
+                                    true,
+                                    needVer ? res.get2() : null);
 
                                 if (tx == null || (!tx.implicit() && tx.isolation() == READ_COMMITTED))
                                     ctx.evicts().touch(entry, topVer);

@@ -650,36 +650,25 @@ public final class GridNearGetFuture<K, V> extends CacheDistributedGetFutureAdap
      */
     @SuppressWarnings("unchecked")
     private void addResult(KeyCacheObject key, CacheObject v, GridCacheVersion ver) {
-        if (needVer) {
-            if (keepCacheObjects) {
-                V val0 = (V)new T2<>(skipVals ? true : v, ver);
+        if (keepCacheObjects) {
+            K key0 = (K)key;
+            V val0 = needVer ?
+                (V)new T2<>(skipVals ? true : v, ver) :
+                (V)(skipVals ? true : v);
 
-                add(new GridFinishedFuture<>(Collections.singletonMap((K)key, val0)));
-            }
-            else {
-                K key0 = (K)cctx.unwrapBinaryIfNeeded(key, !deserializeBinary, false);
-                V val0 = (V)new T2<>(!skipVals ?
-                    (V)cctx.unwrapBinaryIfNeeded(v, !deserializeBinary, false) :
-                    (V)Boolean.TRUE, ver);
-
-                add(new GridFinishedFuture<>(Collections.singletonMap(key0, val0)));
-            }
+            add(new GridFinishedFuture<>(Collections.singletonMap(key0, val0)));
         }
         else {
-            if (keepCacheObjects) {
-                K key0 = (K)key;
-                V val0 = (V)(skipVals ? true : v);
-
-                add(new GridFinishedFuture<>(Collections.singletonMap(key0, val0)));
-            }
-            else {
-                K key0 = (K)cctx.unwrapBinaryIfNeeded(key, !deserializeBinary, false);
-                V val0 = !skipVals ?
+            K key0 = (K)cctx.unwrapBinaryIfNeeded(key, !deserializeBinary, false);
+            V val0 = needVer ?
+                (V)new T2<>(!skipVals ?
+                    (V)cctx.unwrapBinaryIfNeeded(v, !deserializeBinary, false) :
+                    (V)Boolean.TRUE, ver) :
+                !skipVals ?
                     (V)cctx.unwrapBinaryIfNeeded(v, !deserializeBinary, false) :
                     (V)Boolean.TRUE;
 
-                add(new GridFinishedFuture<>(Collections.singletonMap(key0, val0)));
-            }
+            add(new GridFinishedFuture<>(Collections.singletonMap(key0, val0)));
         }
     }
 
