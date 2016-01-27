@@ -1727,7 +1727,7 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter implements Ig
                                     keepCacheObjects,
                                     deserializeBinary,
                                     false,
-                                    loadVer);
+                                    needVer ? loadVer : null);
                             }
                         }
                         else {
@@ -1749,7 +1749,7 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter implements Ig
                                     keepCacheObjects,
                                     deserializeBinary,
                                     false,
-                                    loadVer);
+                                    needVer ? loadVer : null);
                             }
                         }
                     }

@@ -4239,7 +4239,7 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
                 ignite.destroyCache(cacheName);
             }
             catch (IgniteException ignore) {
-                // No-op.                
+                // No-op.
             }
 
             GridTestSwapSpaceSpi spi = (GridTestSwapSpaceSpi)ignite.configuration().getSwapSpaceSpi();
