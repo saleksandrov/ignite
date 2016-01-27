@@ -757,47 +757,54 @@ public abstract class GridCacheAbstractFullApiSelfTest extends GridCacheAbstract
         // Now do the same checks but within transaction.
         if (txShouldBeUsed()) {
             try (Transaction tx0 = transactions().txStart()) {
-                assert cache.getEntries(Collections.<String>emptySet()).isEmpty();
+                try {
+                    assert cache.getEntries(Collections.<String>emptySet()).isEmpty();
 
-                c1 = cache.getEntries(ImmutableSet.of("key1", "key2", "key9999"));
+                    c1 = cache.getEntries(ImmutableSet.of("key1", "key2", "key9999"));
 
-                info("Retrieved c1: " + c1);
+                    info("Retrieved c1: " + c1);
 
-                assert 2 == c1.size() : "Invalid collection: " + c1;
+                    assert 2 == c1.size() : "Invalid collection: " + c1;
 
-                b1 = false;
-                b2 = false;
+                    b1 = false;
+                    b2 = false;
 
-                for (CacheEntry<String, Integer> e: c1){
-                    if (e.getKey().equals("key1") && e.getValue().equals(1))
-                        b1 = true;
+                    for (CacheEntry<String, Integer> e : c1) {
+                        if (e.getKey().equals("key1") && e.getValue().equals(1))
+                            b1 = true;
 
-                    if (e.getKey().equals("key2") && e.getValue().equals(2))
-                        b2 = true;
+                        if (e.getKey().equals("key2") && e.getValue().equals(2))
+                            b2 = true;
+                    }
+
+                    assertTrue(b1 && b2);
+
+                    c2 = cache.getEntries(ImmutableSet.of("key1", "key2", "key9999"));
+
+                    info("Retrieved c2: " + c2);
+
+                    assert 2 == c2.size() : "Invalid collection: " + c2;
+
+                    b1 = false;
+                    b2 = false;
+
+                    for (CacheEntry<String, Integer> e : c2) {
+                        if (e.getKey().equals("key1") && e.getValue().equals(1))
+                            b1 = true;
+
+                        if (e.getKey().equals("key2") && e.getValue().equals(2))
+                            b2 = true;
+                    }
+
+                    assertTrue(b1 && b2);
+
+                    tx0.commit();
                 }
-
-                assertTrue(b1 && b2);
-
-                c2 = cache.getEntries(ImmutableSet.of("key1", "key2", "key9999"));
-
-                info("Retrieved c2: " + c2);
-
-                assert 2 == c2.size() : "Invalid collection: " + c2;
-
-                b1 = false;
-                b2 = false;
-
-                for (CacheEntry<String, Integer> e: c2){
-                    if (e.getKey().equals("key1") && e.getValue().equals(1))
-                        b1 = true;
-
-                    if (e.getKey().equals("key2") && e.getValue().equals(2))
-                        b2 = true;
+                catch (Exception e) {
+                    assert tx0.isolation() == TransactionIsolation.REPEATABLE_READ ||
+                        (tx0.isolation() == TransactionIsolation.SERIALIZABLE &&
+                            tx0.concurrency() == TransactionConcurrency.PESSIMISTIC);
                 }
-
-                assertTrue(b1 && b2);
-
-                tx0.commit();
             }
         }
     }
