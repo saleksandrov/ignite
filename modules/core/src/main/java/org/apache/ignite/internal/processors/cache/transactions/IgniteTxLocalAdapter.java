@@ -1556,7 +1556,7 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter implements Ig
                                     keepCacheObjects,
                                     deserializeBinary,
                                     false,
-                                    readVer);
+                                    needVer ? readVer : null);
                             }
                             else
                                 missed.put(key, ver);
