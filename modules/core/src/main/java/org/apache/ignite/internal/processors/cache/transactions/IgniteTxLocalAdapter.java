@@ -1555,7 +1555,8 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter implements Ig
                                     skipVals,
                                     keepCacheObjects,
                                     deserializeBinary,
-                                    false);
+                                    false,
+                                    readVer);
                             }
                             else
                                 missed.put(key, ver);
@@ -1656,12 +1657,14 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter implements Ig
         final boolean deserializeBinary,
         final boolean skipVals,
         final boolean keepCacheObjects,
-        final boolean skipStore
+        final boolean skipStore,
+        final boolean needVer
+
     ) {
         if (log.isDebugEnabled())
             log.debug("Loading missed values for missed map: " + missedMap);
 
-        final boolean needReadVer = serializable() && optimistic();
+        final boolean needReadVer = (serializable() && optimistic()) || needVer;
 
         return new GridEmbeddedFuture<>(
             new C2<Void, Exception, Map<K, V>>() {
@@ -1723,7 +1726,8 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter implements Ig
                                     skipVals,
                                     keepCacheObjects,
                                     deserializeBinary,
-                                    false);
+                                    false,
+                                    loadVer);
                             }
                         }
                         else {
@@ -1744,7 +1748,8 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter implements Ig
                                     skipVals,
                                     keepCacheObjects,
                                     deserializeBinary,
-                                    false);
+                                    false,
+                                    loadVer);
                             }
                         }
                     }
@@ -1922,7 +1927,8 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter implements Ig
                                 deserializeBinary,
                                 skipVals,
                                 keepCacheObjects,
-                                skipStore);
+                                skipStore,
+                                needVer);
                         }
 
                         return new GridFinishedFuture<>(Collections.<K, V>emptyMap());
@@ -1988,7 +1994,8 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter implements Ig
                         deserializeBinary,
                         skipVals,
                         keepCacheObjects,
-                        skipStore);
+                        skipStore,
+                        needVer);
                 }
 
                 return new GridFinishedFuture<>(retMap);

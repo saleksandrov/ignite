@@ -17,6 +17,8 @@
 
 package org.apache.ignite.internal.processors.cache;
 
+import java.util.HashSet;
+import java.util.Set;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
 import org.apache.ignite.cache.CacheAtomicityMode;
@@ -116,6 +118,73 @@ public class CacheReadThroughRestartSelfTest extends GridCacheAbstractSelfTest {
     /**
      * @throws Exception If failed.
      */
+    public void testReadEntryThroughInTx() throws Exception {
+        IgniteCache<String, Integer> cache = grid(1).cache(null);
+
+        for (int k = 0; k < 1000; k++)
+            cache.put("key" + k, k);
+
+        stopAllGrids();
+
+        startGrids(2);
+
+        Ignite ignite = grid(1);
+
+        cache = ignite.cache(null);
+
+        for (TransactionConcurrency txConcurrency : TransactionConcurrency.values()) {
+            for (TransactionIsolation txIsolation : TransactionIsolation.values()) {
+                try (Transaction tx = ignite.transactions().txStart(txConcurrency, txIsolation, 100000, 1000)) {
+                    for (int k = 0; k < 1000; k++) {
+                        String key = "key" + k;
+
+                        assertNotNull("Null value for key: " + key, cache.getEntry(key));
+                    }
+
+                    tx.commit();
+                }
+            }
+        }
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testReadEntriesThroughInTx() throws Exception {
+        IgniteCache<String, Integer> cache = grid(1).cache(null);
+
+        for (int k = 0; k < 1000; k++)
+            cache.put("key" + k, k);
+
+        stopAllGrids();
+
+        startGrids(2);
+
+        Ignite ignite = grid(1);
+
+        cache = ignite.cache(null);
+
+        for (TransactionConcurrency txConcurrency : TransactionConcurrency.values()) {
+            for (TransactionIsolation txIsolation : TransactionIsolation.values()) {
+                try (Transaction tx = ignite.transactions().txStart(txConcurrency, txIsolation, 100000, 1000)) {
+                    for (int k = 0; k < 100; k++) {
+                        Set<String> keys = new HashSet<>();
+
+                        for (int j = k; j < k + 10; j++)
+                            keys.add("key" + j);
+
+                        assertNotNull("Null value for keys: " + k + " - " + k + 9, cache.getEntries(keys));
+                    }
+
+                    tx.commit();
+                }
+            }
+        }
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
     public void testReadThrough() throws Exception {
         IgniteCache<String, Integer> cache = grid(1).cache(null);
 
@@ -134,6 +203,57 @@ public class CacheReadThroughRestartSelfTest extends GridCacheAbstractSelfTest {
             String key = "key" + k;
 
             assertNotNull("Null value for key: " + key, cache.get(key));
+        }
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testReadEntryThrough() throws Exception {
+        IgniteCache<String, Integer> cache = grid(1).cache(null);
+
+        for (int k = 0; k < 1000; k++)
+            cache.put("key" + k, k);
+
+        stopAllGrids();
+
+        startGrids(2);
+
+        Ignite ignite = grid(1);
+
+        cache = ignite.cache(null);
+
+        for (int k = 0; k < 1000; k++) {
+            String key = "key" + k;
+
+            assertNotNull("Null value for key: " + key, cache.getEntry(key));
+        }
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testReadEntriesThrough() throws Exception {
+        IgniteCache<String, Integer> cache = grid(1).cache(null);
+
+        for (int k = 0; k < 1000; k++)
+            cache.put("key" + k, k);
+
+        stopAllGrids();
+
+        startGrids(2);
+
+        Ignite ignite = grid(1);
+
+        cache = ignite.cache(null);
+
+        for (int k = 0; k < 100; k++) {
+            Set<String> keys = new HashSet<>();
+
+            for (int j = k; j < k + 10; j++)
+                keys.add("key" + j);
+
+            assertNotNull("Null value for keys: " + k + " - " + k + 9, cache.getEntries(keys));
         }
     }
 }
